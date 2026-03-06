@@ -13,7 +13,7 @@ data class KtImmutablePointF(
     ImmutablePointInterface<Float, KtImmutablePointF> {
     fun toFloatArray(): FloatArray = floatArrayOf(x, y)
 
-    fun toMutabKtImmutablePointFle() = KtPointF(x, y)
+    fun toMutable() = KtPointF(x, y)
 
     override fun offset(
         dx: Float,

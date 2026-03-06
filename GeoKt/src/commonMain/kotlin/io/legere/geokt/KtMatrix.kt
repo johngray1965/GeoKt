@@ -516,7 +516,7 @@ data class KtMatrix(
         return values.contentEquals(other.values)
     }
 
-    override fun hashCode(): Int = values.contentHashCode()
+    override fun hashCode(): Int = this::class.hashCode() * 31 + values.contentHashCode()
 }
 
 data class KtImmutableMatrix(
@@ -542,7 +542,7 @@ data class KtImmutableMatrix(
         return values.contentEquals(other.values)
     }
 
-    override fun hashCode(): Int = values.contentHashCode()
+    override fun hashCode(): Int = this::class.hashCode() * 31 + values.contentHashCode()
 
     fun reset(): KtImmutableMatrix = KtImmutableMatrix()
 

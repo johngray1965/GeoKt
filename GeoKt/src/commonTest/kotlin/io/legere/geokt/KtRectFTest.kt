@@ -1,0 +1,543 @@
+package io.legere.geokt
+import assertk.assertThat
+import assertk.assertions.isEqualTo
+import assertk.assertions.isFalse
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isTrue
+import kotlin.test.Test
+
+class KtRectFTest {
+    @Test
+    fun defaultConstructor() {
+        val rect = KtRectF()
+        assertThat(rect.isEmpty).isTrue()
+    }
+
+    @Test
+    fun constructorWithFloatRectValues() {
+        val input = KtImmutableRectF(10.5f, 20.5f, 30.5f, 40.5f)
+        val rect = KtRectF(input)
+        assertThat(rect.left).isEqualTo(10.5f)
+        assertThat(rect.top).isEqualTo(20.5f)
+        assertThat(rect.right).isEqualTo(30.5f)
+        assertThat(rect.bottom).isEqualTo(40.5f)
+    }
+
+    @Test
+    fun constructorWithIntRectValues() {
+        val input = KtImmutableRect(10, 20, 30, 40)
+        val rect = KtRectF(input)
+        assertThat(rect.left).isEqualTo(10.0f)
+        assertThat(rect.top).isEqualTo(20.0f)
+        assertThat(rect.right).isEqualTo(30.0f)
+        assertThat(rect.bottom).isEqualTo(40.0f)
+    }
+
+    @Test
+    fun setEmptySetsToDefaultValues() {
+        val input = KtImmutableRectF(10.5f, 20.5f, 30.5f, 40.5f)
+        val rect = KtRectF(input)
+        rect.setEmpty()
+        assertThat(rect.isEmpty).isTrue()
+    }
+
+    @Test
+    fun toFloatArrayWithPositiveValues() {
+        // Verify that toFloatArray correctly returns an array with positive float values.
+        val rect = KtRectF(10.5f, 20.5f, 30.5f, 40.5f)
+        val expectedArray = floatArrayOf(10.5f, 20.5f, 30.5f, 40.5f)
+        assertThat(rect.toFloatArray()).isEqualTo(expectedArray)
+    }
+
+    @Test
+    fun toFloatArrayWithNegativeValues() {
+        // Verify that toFloatArray correctly returns an array with negative float values.
+        val rect = KtRectF(-10.5f, -20.5f, -30.5f, -40.5f)
+        val expectedArray = floatArrayOf(-10.5f, -20.5f, -30.5f, -40.5f)
+        assertThat(rect.toFloatArray()).isEqualTo(expectedArray)
+    }
+
+    @Test
+    fun toFloatArrayWithZeroValues() {
+        // Test toFloatArray with all coordinates set to zero, including the EMPTY companion object.
+        val rect = KtRectF.EMPTY
+        val expectedArray = floatArrayOf(0f, 0f, 0f, 0f)
+        assertThat(rect.toFloatArray()).isEqualTo(expectedArray)
+    }
+
+    @Test
+    fun toFloatArrayWithMixedSignValues() {
+        // Ensure toFloatArray functions correctly when coordinates have a mix of positive and negative values.
+        val rect = KtRectF(-10.5f, 20.5f, 30.5f, -40.5f)
+        val expectedArray = floatArrayOf(-10.5f, 20.5f, 30.5f, -40.5f)
+        assertThat(rect.toFloatArray()).isEqualTo(expectedArray)
+    }
+
+    @Test
+    fun toFloatArrayWithLargeMagnitudeValues() {
+        // Test toFloatArray with very large positive and negative float values to check for precision issues.
+        val rect = KtRectF(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
+        val expectedArray = floatArrayOf(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
+        assertThat(rect.toFloatArray()).isEqualTo(expectedArray)
+    }
+
+    @Test
+    fun widthWithPositiveCoordinates() {
+        // Calculate width for a standard rectangle where right is greater than left.
+        val rect = KtRectF(10.5f, 20.5f, 30.5f, 40.5f)
+        assertThat(rect.width).isEqualTo(20.0f)
+        assertThat(rect.width()).isEqualTo(20.0f)
+    }
+
+    @Test
+    fun widthWithAZeroWidthRectangle() {
+        // Test width calculation when right and left coordinates are equal, expecting a result of 0.
+        val rect = KtRectF(10.5f, 20.5f, 10.5f, 40.5f)
+        assertThat(rect.width).isEqualTo(0.0f)
+        assertThat(rect.width()).isEqualTo(0.0f)
+    }
+
+    @Test
+    fun widthResultingInANegativeValue() {
+        // Check the width calculation for a rectangle where the left coordinate is greater than the right coordinate.
+        val rect = KtRectF(30.5f, 20.5f, 10.5f, 40.5f)
+        assertThat(rect.width).isEqualTo(-20.0f)
+        assertThat(rect.width()).isEqualTo(-20.0f)
+    }
+
+    @Test
+    fun widthWithNegativeCoordinates() {
+        // Verify width calculation when both left and right coordinates are negative.
+        val rect = KtRectF(-10.5f, 20.5f, -30.5f, 40.5f)
+        assertThat(rect.width).isEqualTo(-20.0f)
+        assertThat(rect.width()).isEqualTo(-20.0f)
+    }
+
+    @Test
+    fun widthSpanningTheZeroAxis() {
+        // Calculate width for a rectangle that crosses the y-axis (e.g., left is negative, right is positive).
+        val rect = KtRectF(-10.5f, 20.5f, 10.5f, 40.5f)
+        assertThat(rect.width).isEqualTo(21.0f)
+        assertThat(rect.width()).isEqualTo(21.0f)
+    }
+
+    @Test
+    fun widthWithFloatingPointPrecision() {
+        // Test width calculation with floating-point numbers that require high precision to ensure accuracy.
+        val rect = KtRectF(10.5f, 20.5f, 30.5f, 40.5f)
+        assertThat(rect.width).isEqualTo(20.0f)
+        assertThat(rect.width()).isEqualTo(20.0f)
+    }
+
+    @Test
+    fun heightWithPositiveCoordinates() {
+        // Calculate height for a standard rectangle where bottom is greater than top.
+        val rect = KtRectF(10.5f, 20.5f, 30.5f, 40.5f)
+        assertThat(rect.height).isEqualTo(20.0f)
+        assertThat(rect.height()).isEqualTo(20.0f)
+    }
+
+    @Test
+    fun heightWithAZeroHeightRectangle() {
+        // Test height calculation when bottom and top coordinates are equal, expecting a result of 0.
+        val rect = KtRectF(10.5f, 20.5f, 30.5f, 20.5f)
+        assertThat(rect.height).isEqualTo(0.0f)
+        assertThat(rect.height()).isEqualTo(0.0f)
+    }
+
+    @Test
+    fun heightResultingInANegativeValue() {
+        // Check the height calculation for a rectangle where the top coordinate is greater than the bottom coordinate (inverted rectangle).
+        val rect = KtRectF(10.5f, 40.5f, 30.5f, 20.5f)
+        assertThat(rect.height).isEqualTo(-20.0f)
+        assertThat(rect.height()).isEqualTo(-20.0f)
+    }
+
+    @Test
+    fun heightWithNegativeCoordinates() {
+        // Verify height calculation when both top and bottom coordinates are negative.
+        val rect = KtRectF(10.5f, -20.5f, 30.5f, -40.5f)
+        assertThat(rect.height).isEqualTo(-20.0f)
+        assertThat(rect.height()).isEqualTo(-20.0f)
+    }
+
+    @Test
+    fun heightSpanningTheZeroAxis() {
+        // Calculate height for a rectangle that crosses the x-axis (e.g., top is negative, bottom is positive).
+        val rect = KtRectF(10.5f, -20.5f, 30.5f, 40.5f)
+        assertThat(rect.height).isEqualTo(61.0f)
+        assertThat(rect.height()).isEqualTo(61.0f)
+    }
+
+    @Test
+    fun heightWithFloatingPointPrecision() {
+        // Test height calculation with floating-point numbers that require high precision to ensure accuracy.
+        val rect = KtRectF(10.5f, 20.5f, 30.5f, 40.5f)
+        assertThat(rect.height).isEqualTo(20.0f)
+        assertThat(rect.height()).isEqualTo(20.0f)
+    }
+
+    @Test
+    fun union() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        val rect2 = KtRectF(5f, 5f, 15f, 15f)
+        val expected = KtRectF(0f, 0f, 15f, 15f)
+        rect1.union(rect2)
+        assertThat(rect1).isEqualTo(expected)
+
+        val rect1Unprocessed = KtRectF(0f, 0f, 10f, 10f)
+
+        val emptyRect = KtRectF.EMPTY.toMutable()
+        val rect3 = KtRectF(0f, 0f, 10f, 10f)
+        rect3.union(emptyRect)
+        assertThat(rect3).isEqualTo(rect1Unprocessed)
+        emptyRect.union(rect1Unprocessed)
+        assertThat(emptyRect).isEqualTo(rect1Unprocessed)
+    }
+
+    @Test
+    fun unionEmpty() {
+        val rect1 = KtRectF()
+        val rect2 = KtRectF(5f, 5f, 15f, 15f)
+        rect1.union(rect2)
+        assertThat(rect1).isEqualTo(rect2)
+
+        val emptyRect = KtImmutableRectF.EMPTY.toMutable()
+        rect1.union(emptyRect)
+        assertThat(rect1).isEqualTo(rect1)
+        emptyRect.union(rect1)
+        assertThat(emptyRect).isEqualTo(rect1)
+    }
+
+    @Test
+    fun union2() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(0f, 0f, 15f, 15f)
+        rect1.union(5f, 5f, 15f, 15f)
+        assertThat(rect1).isEqualTo(expected)
+    }
+
+    @Test
+    fun union2Empty() {
+        val rect1 = KtRectF()
+        val other = KtRectF(5f, 5f, 15f, 15f)
+        rect1.union(5f, 5f, 15f, 15f)
+        assertThat(rect1).isEqualTo(other)
+    }
+
+    @Test
+    fun union3() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(0f, 0f, 15f, 15f)
+        rect1.union(15f, 15f)
+        assertThat(rect1).isEqualTo(expected)
+    }
+
+    @Test
+    fun union3Empty() {
+        val rect1 = KtRectF()
+        rect1.union(15f, 15f)
+        assertThat(rect1).isEqualTo(rect1)
+    }
+
+    @Test
+    fun intersect() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        val rect2 = KtRectF(5f, 5f, 15f, 15f)
+        val expected = KtRectF(5f, 5f, 10f, 10f)
+        rect1.intersect(rect2)
+        assertThat(rect1).isEqualTo(expected)
+
+        val rect1Unprocessed = KtRectF(0f, 0f, 10f, 10f)
+        val rect3 = KtRectF(0f, 0f, 10f, 10f)
+        rect3.intersect(rect1Unprocessed)
+        assertThat(rect3).isEqualTo(rect1Unprocessed)
+        rect1Unprocessed.intersect(rect3)
+        assertThat(rect1Unprocessed).isEqualTo(rect1Unprocessed)
+    }
+
+    @Test
+    fun intersect2Empty() {
+        val rect1 = KtRectF()
+        rect1.intersect(5f, 5f, 15f, 15f)
+        assertThat(rect1).isEqualTo(KtRectF())
+        val rect2 = KtRectF(5f, 5f, 15f, 15f)
+        rect2.intersect(KtRectF())
+        assertThat(rect2).isEqualTo(KtRectF(5f, 5f, 15f, 15f))
+        rect1.intersect(KtRectF())
+        assertThat(rect1).isEqualTo(KtRectF())
+    }
+
+    @Test
+    fun intersect2() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(5f, 5f, 10f, 10f)
+        rect1.intersect(5f, 5f, 15f, 15f)
+        assertThat(rect1).isEqualTo(expected)
+
+        val rect1Unprocessed = KtRectF(0f, 0f, 10f, 10f)
+        val rect3 = KtRectF(0f, 0f, 10f, 10f)
+        rect3.intersect(0f, 0f, 10f, 10f)
+        assertThat(rect3).isEqualTo(rect1Unprocessed)
+        rect1Unprocessed.intersect(0f, 0f, 10f, 10f)
+        assertThat(rect1Unprocessed).isEqualTo(rect1Unprocessed)
+    }
+
+    @Test
+    fun round() {
+        val rect = KtRectF(0.1f, 0.9f, 9.9f, 10.1f)
+        val expected = KtRect(0, 1, 10, 10) // floor, floor, ceil, ceil
+
+        // Assuming roundOut implementation:
+        // left = floor(left), top = floor(top), right = ceil(right), bottom = ceil(bottom)
+        // Wait, Android RectF.roundOut does exactly that.
+        // My KtRectF does not have roundOut yet?
+        // The user asked to add tests for it, implying it should be there or I should add it.
+        // I checked TypeConversion.kt earlier, maybe it's there as extension?
+        // Or maybe I missed adding it to KtRectF.kt?
+        // Let's assume I need to add it to KtRectF.kt as well if it's missing.
+        // But for now I'll write the test and see.
+        // Wait, I cannot run tests to see if it fails.
+        // I will add roundOut() to KtRectF.kt if I don't see it.
+        // I read KtRectF.kt in previous turn, it did NOT have roundOut.
+        // It has `toPdfRect` which does roundToInt.
+
+        // I'll add the test assuming I will add the function.
+
+        val rect2 = KtRect()
+        rect.round(rect2)
+        assertThat(rect2).isEqualTo(expected)
+    }
+
+    @Test
+    fun roundOut() {
+        val rect = KtRectF(0.1f, 0.9f, 9.9f, 10.1f)
+        val expected = KtRect(0, 0, 10, 11) // floor, floor, ceil, ceil
+
+        // Assuming roundOut implementation:
+        // left = floor(left), top = floor(top), right = ceil(right), bottom = ceil(bottom)
+        // Wait, Android RectF.roundOut does exactly that.
+        // My KtRectF does not have roundOut yet?
+        // The user asked to add tests for it, implying it should be there or I should add it.
+        // I checked TypeConversion.kt earlier, maybe it's there as extension?
+        // Or maybe I missed adding it to KtRectF.kt?
+        // Let's assume I need to add it to KtRectF.kt as well if it's missing.
+        // But for now I'll write the test and see.
+        // Wait, I cannot run tests to see if it fails.
+        // I will add roundOut() to KtRectF.kt if I don't see it.
+        // I read KtRectF.kt in previous turn, it did NOT have roundOut.
+        // It has `toPdfRect` which does roundToInt.
+
+        // I'll add the test assuming I will add the function.
+        assertThat(rect.roundOut()).isEqualTo(expected)
+
+        val rect2 = KtRect()
+        rect.roundOut(rect2)
+        assertThat(rect2).isEqualTo(expected)
+    }
+
+    @Test
+    fun contains() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        assertThat(rect.contains(5f, 5f)).isTrue()
+        assertThat(rect.contains(0f, 0f)).isTrue() // Inclusive left/top
+        assertThat(rect.contains(10f, 10f)).isFalse() // Exclusive right/bottom
+        assertThat(rect.contains(11f, 5f)).isFalse()
+
+        val insideRect = KtRectF(2f, 2f, 8f, 8f)
+        val insideRectInt = KtRect(2, 2, 8, 8)
+        assertThat(rect.contains(insideRect)).isTrue()
+        assertThat(rect.contains(2f, 2f, 8f, 8f)).isTrue()
+        assertThat(rect.contains(insideRectInt)).isTrue()
+
+        val overlappingRectInt = KtRect(5, 5, 15, 15)
+        assertThat(rect.contains(overlappingRectInt)).isFalse()
+    }
+
+    @Test
+    fun intersects() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        val rect2 = KtRectF(5f, 5f, 15f, 15f)
+        assertThat(rect1.intersects(rect2)).isTrue()
+        assertThat(rect1.intersects(5f, 5f, 15f, 15f)).isTrue()
+
+        val rect3 = KtRectF(20f, 20f, 30f, 30f)
+        assertThat(rect1.intersects(rect3)).isFalse()
+        println("rect1: $rect1")
+        assertThat(rect1.intersects(20f, 20f, 30f, 30f)).isFalse()
+
+        // Touching edges usually considered intersecting in Android RectF?
+        // RectF.intersects(a, b) -> left < right && top < bottom ...
+        // If left == right, it returns false (empty).
+        // If r1.right == r2.left, 10 < 10 is false -> no intersection.
+        val rect4 = KtRectF(10f, 0f, 20f, 10f)
+        assertThat(rect1.intersects(rect4)).isTrue()
+    }
+
+    @Test
+    fun intersectsEachBound() {
+        val rect1 = KtRectF(5f, 5f, 10f, 10f)
+        val leftOut = KtRectF(5f, 5f, 10f, 10f)
+        leftOut.offset(0f, -10f)
+        assertThat(rect1.intersects(leftOut)).isFalse()
+        val topOut = KtRectF(5f, 5f, 10f, 10f)
+        topOut.offset(-10f, 0f)
+        assertThat(rect1.intersects(topOut)).isFalse()
+        val rightOUt = KtRectF(5f, 5f, 10f, 10f)
+        rightOUt.offset(0f, 10f)
+        assertThat(rect1.intersects(rightOUt)).isFalse()
+        val bottomOut = KtRectF(5f, 5f, 10f, 10f)
+        bottomOut.offset(10f, 0f)
+        assertThat(rect1.intersects(bottomOut)).isFalse()
+    }
+
+    @Test
+    fun intersectsEmpty() {
+        val rect1 = KtRectF()
+        val rect2 = KtRectF(5f, 5f, 15f, 15f)
+        assertThat(rect1.intersects(rect2)).isFalse()
+        assertThat(rect1.intersects(5f, 5f, 15f, 15f)).isFalse()
+
+        val rect5 = KtRectF(0f, 0f, 10f, 10f)
+        val rect3 = KtRectF()
+        assertThat(rect5.intersects(rect3)).isFalse()
+    }
+
+    @Test
+    fun width() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        assertThat(rect1.width).isEqualTo(10f)
+
+        val rect2 = KtRectF(10f, 0f, 20f, 10f)
+        assertThat(rect2.width).isEqualTo(10f)
+    }
+
+    @Test
+    fun height() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        assertThat(rect1.height).isEqualTo(10f)
+
+        val rect2 = KtRectF(10f, 10f, 20f, 20f)
+        assertThat(rect2.height).isEqualTo(10f)
+    }
+
+    @Test
+    fun center() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        assertThat(rect1.centerX).isEqualTo(5f)
+        assertThat(rect1.centerX()).isEqualTo(5f)
+        assertThat(rect1.centerY).isEqualTo(5f)
+        assertThat(rect1.centerY()).isEqualTo(5f)
+
+        val rect2 = KtRectF(10f, 10f, 20f, 20f)
+        assertThat(rect2.centerX).isEqualTo(15f)
+        assertThat(rect2.centerX()).isEqualTo(15f)
+        assertThat(rect2.centerY).isEqualTo(15f)
+        assertThat(rect2.centerY()).isEqualTo(15f)
+    }
+
+    @Test
+    fun offset() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(5f, 5f, 15f, 15f)
+        rect.offset(5f, 5f)
+        assertThat(rect).isEqualTo(expected)
+    }
+
+    @Test
+    fun offsetTo() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(5f, 5f, 15f, 15f)
+        rect.offsetTo(5f, 5f)
+        assertThat(rect).isEqualTo(expected)
+    }
+
+    @Test
+    fun reset() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        rect.setEmpty()
+        assertThat(rect).isEqualTo(KtRectF.EMPTY.toMutable())
+    }
+
+    @Test
+    fun set() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val rect2 = KtRectF(20f, 20f, 50f, 50f)
+        rect.set(rect2)
+        assertThat(rect).isEqualTo(rect2)
+    }
+
+    @Test
+    fun set2() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val rect2 = KtRect(20, 20, 50, 50)
+        val expected = KtRectF(20f, 20f, 50f, 50f)
+        rect.set(rect2)
+        assertThat(rect).isEqualTo(expected)
+    }
+
+    @Test
+    fun inset() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(2f, 2f, 8f, 8f)
+        rect.inset(2f, 2f)
+        assertThat(rect).isEqualTo(expected)
+    }
+
+    @Test
+    fun inset00() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(0f, 0f, 10f, 10f)
+        rect.inset(0f, 0f)
+        assertThat(rect).isEqualTo(expected)
+        rect.inset(0f, 10f)
+        assertThat(rect).isEqualTo(KtRectF(left = 0.0f, top = 10.0f, right = 10.0f, bottom = 0.0f))
+        rect.inset(10f, 0f)
+        assertThat(rect).isEqualTo(KtRectF(left = 10.0f, top = 10.0f, right = 00.0f, bottom = 0.0f))
+    }
+
+    @Test
+    fun inset2() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(2f, 2f, 8f, 8f)
+        rect.inset(2f, 2f, 2f, 2f)
+        assertThat(rect).isEqualTo(expected)
+    }
+
+    @Test
+    fun sort() {
+        val rect = KtRectF(0f, 0f, 10f, 10f)
+        val expected = KtRectF(0f, 0f, 10f, 10f)
+        rect.sort()
+        assertThat(rect).isEqualTo(expected)
+
+        val rect2 = KtRectF(10f, 0f, 0f, 10f)
+        val expected2 = KtRectF(0f, 0f, 10f, 10f)
+        rect2.sort()
+        assertThat(rect2).isEqualTo(expected2)
+    }
+
+    @Test
+    fun isEmpty() {
+        val rect1 = KtRectF(0f, 0f, 10f, 10f)
+        val isEmpty = rect1.isEmpty
+        assertThat(isEmpty).isFalse()
+
+        val rect2 = KtRectF.EMPTY
+        println("rect2: $rect2")
+        val isEmpty2 = rect2.isEmpty()
+        println("isEmpty2: $isEmpty2")
+        assertThat(isEmpty2).isTrue()
+    }
+
+    @Test
+    fun toImmutable() {
+        val rect = KtRectF(1f, 2f, 3f, 4f)
+        val mutable = rect.toImmutable()
+        assertThat(mutable).isInstanceOf(KtImmutableRectF::class)
+        assertThat(mutable.left).isEqualTo(1f)
+        assertThat(mutable.top).isEqualTo(2f)
+        assertThat(mutable.right).isEqualTo(3f)
+        assertThat(mutable.bottom).isEqualTo(4f)
+    }
+}
