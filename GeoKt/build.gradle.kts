@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.vanniktech.mavenPublish)
+    alias(libs.plugins.kotlinx.kover)
 }
 group = "io.legere.geokt"
 version = "1.0.0"
@@ -17,9 +18,7 @@ kotlin {
 
         withJava() // enable java compilation support
         withHostTestBuilder {}.configure {}
-        withDeviceTestBuilder {
-            sourceSetTreeName = "test"
-        }
+        withDeviceTestBuilder {}
 
         compilations.configureEach {
             compileTaskProvider.configure {
@@ -35,13 +34,18 @@ kotlin {
     linuxX64()
 
     sourceSets {
-        commonMain.dependencies {
-            //put your multiplatform dependencies here
-        }
-
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.assertk)
+        }
+        androidUnitTest {
+            dependsOn(commonTest.get())
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.truth)
+                implementation(libs.robolectric)
+                implementation(libs.junit)
+            }
         }
     }
 }
