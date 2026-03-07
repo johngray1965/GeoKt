@@ -1,8 +1,8 @@
 <component name="ArtifactManager">
-  <artifact type="jar" name="geokt-jvm-1.0.0">
-    <output-path>$PROJECT_DIR$/geokt/build/libs</output-path>
-    <root id="archive" name="geokt-jvm-1.0.0.jar">
-      <element id="module-output" name="GeoKt.geokt.jvmMain" />
+  <artifact type="jar" name="GeoKt-jvm-1.0.0">
+    <output-path>$PROJECT_DIR$/GeoKt/build/libs</output-path>
+    <root id="archive" name="GeoKt-jvm-1.0.0.jar">
+      <element id="module-output" name="GeoKt.GeoKt.jvmMain" />
     </root>
   </artifact>
 </component>

@@ -49,6 +49,18 @@ kotlin {
         }
     }
 }
+
+kover {
+    useJacoco()
+    reports {
+        filters {
+            excludes {
+                classes("*.BuildConfig", "*.R", "*.Manifest")
+            }
+        }
+    }
+}
+
 mavenPublishing {
     publishToMavenCentral()
 
