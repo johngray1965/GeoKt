@@ -1,6 +1,7 @@
 package io.legere.geokt
 
 import assertk.assertThat
+import assertk.assertions.isCloseTo
 import assertk.assertions.isEqualTo
 import assertk.assertions.isFalse
 import assertk.assertions.isInstanceOf

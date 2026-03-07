@@ -39,7 +39,6 @@ kotlin {
             implementation(libs.assertk)
         }
         androidUnitTest {
-            dependsOn(commonTest.get())
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.truth)
