@@ -51,11 +51,10 @@ kotlin {
 }
 
 kover {
-    useJacoco()
     reports {
         filters {
             excludes {
-                classes("*.BuildConfig", "*.R", "*.Manifest")
+                classes("*.BuildConfig", "*.R", "*.Manifest", $$"*$DefaultImpls")
             }
         }
     }

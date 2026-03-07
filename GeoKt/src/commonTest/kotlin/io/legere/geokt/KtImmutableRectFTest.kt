@@ -342,28 +342,28 @@ class KtImmutableRectFTest {
         assertThat(result).isEqualTo(rect1)
     }
 
-//    @Test
-//    fun roundOut() {
-//        val rect = KtImmutableRectF(0.1f, 0.9f, 9.9f, 10.1f)
-//        val expected = KtImmutableRect(0, 0, 10, 11) // floor, floor, ceil, ceil
-//
-//        // Assuming roundOut implementation:
-//        // left = floor(left), top = floor(top), right = ceil(right), bottom = ceil(bottom)
-//        // Wait, Android RectF.roundOut does exactly that.
-//        // My KtImmutableRectF does not have roundOut yet?
-//        // The user asked to add tests for it, implying it should be there or I should add it.
-//        // I checked TypeConversion.kt earlier, maybe it's there as extension?
-//        // Or maybe I missed adding it to KtImmutableRectF.kt?
-//        // Let's assume I need to add it to KtImmutableRectF.kt as well if it's missing.
-//        // But for now I'll write the test and see.
-//        // Wait, I cannot run tests to see if it fails.
-//        // I will add roundOut() to KtImmutableRectF.kt if I don't see it.
-//        // I read KtImmutableRectF.kt in previous turn, it did NOT have roundOut.
-//        // It has `toPdfRect` which does roundToInt.
-//
-//        // I'll add the test assuming I will add the function.
-//        assertThat(rect.roundOut()).isEqualTo(expected)
-//    }
+    @Test
+    fun roundOut() {
+        val rect = KtImmutableRectF(0.1f, 0.9f, 9.9f, 10.1f)
+        val expected = KtImmutableRect(0, 0, 10, 11) // floor, floor, ceil, ceil
+
+        // Assuming roundOut implementation:
+        // left = floor(left), top = floor(top), right = ceil(right), bottom = ceil(bottom)
+        // Wait, Android RectF.roundOut does exactly that.
+        // My KtImmutableRectF does not have roundOut yet?
+        // The user asked to add tests for it, implying it should be there or I should add it.
+        // I checked TypeConversion.kt earlier, maybe it's there as extension?
+        // Or maybe I missed adding it to KtImmutableRectF.kt?
+        // Let's assume I need to add it to KtImmutableRectF.kt as well if it's missing.
+        // But for now I'll write the test and see.
+        // Wait, I cannot run tests to see if it fails.
+        // I will add roundOut() to KtImmutableRectF.kt if I don't see it.
+        // I read KtImmutableRectF.kt in previous turn, it did NOT have roundOut.
+        // It has `toPdfRect` which does roundToInt.
+
+        // I'll add the test assuming I will add the function.
+        assertThat(rect.roundOut()).isEqualTo(expected)
+    }
 
     @Test
     fun contains() {

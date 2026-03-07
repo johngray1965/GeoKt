@@ -1,0 +1,304 @@
+package io.legere.geokt
+
+import assertk.assertThat
+import assertk.assertions.hasSize
+import assertk.assertions.isCloseTo
+import kotlin.test.Test
+
+class KtImmutableMatrixPrePostTest {
+    val halfTolerance = ZERO_TOLERANCE / 2
+
+    @Test
+    fun preRotate0() = preRotate(0.0)
+
+    @Test
+    fun preRotate0WithOffset() = preRotateWIthOffset(0.0)
+
+    @Test
+    fun postRotate0() = postRotate(0.0)
+
+    @Test
+    fun postRotate0WithOffset() = postRotateWIthOffset(0.0)
+
+    @Test
+    fun preRotate45() = preRotate(45.0)
+
+    @Test
+    fun preRotate45WithOffset() = preRotateWIthOffset(45.0)
+
+    @Test
+    fun postRotate45() = postRotate(45.0)
+
+    @Test
+    fun postRotate45WithOffset() = postRotateWIthOffset(45.0)
+
+    @Test
+    fun preRotate90() = preRotate(90.0)
+
+    @Test
+    fun preRotate90WithOffset() = preRotateWIthOffset(90.0)
+
+    @Test
+    fun postRotate90() = postRotate(90.0)
+
+    @Test
+    fun postRotate90WithOffset() = postRotateWIthOffset(90.0)
+
+    @Test
+    fun preRotate180() = preRotate(180.0)
+
+    @Test
+    fun preRotate180WithOffset() = preRotateWIthOffset(180.0)
+
+    @Test
+    fun postRotate180() = postRotate(180.0)
+
+    @Test
+    fun postRotate180WithOffset() = postRotateWIthOffset(180.0)
+
+    @Test
+    fun preRotate270() = preRotate(270.0)
+
+    @Test
+    fun preRotate270WithOffset() = preRotateWIthOffset(270.0)
+
+    @Test
+    fun postRotate270() = postRotate(270.0)
+
+    @Test
+    fun postRotate270WithOffset() = postRotateWIthOffset(270.0)
+
+    @Test
+    fun preRotate90Tolerance() = preRotateWithTolerance(90.0)
+
+    @Test
+    fun preRotate90WithOffsetTolerance() = preRotateWIthOffsetWithTolerance(90.0)
+
+    @Test
+    fun postRotate90Tolerance() = postRotateWithTolerance(90.0)
+
+    @Test
+    fun postRotate90WithOffsetTolerance() = postRotateWIthOffsetWithTolerance(90.0)
+
+    @Test
+    fun preRotate180Tolerance() = preRotateWithTolerance(180.0)
+
+    @Test
+    fun preRotate180WithOffsetTolerance() = preRotateWIthOffsetWithTolerance(180.0)
+
+    @Test
+    fun postRotate180Tolerance() = postRotateWithTolerance(180.0)
+
+    @Test
+    fun postRotate180WithOffsetTolerance() = postRotateWIthOffsetWithTolerance(180.0)
+
+    private fun preRotateWIthOffset(angle: Double) {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setScale(0.5, 0.5, 25.0, 25.0)
+
+        val justRotated = start.setRotate(angle, 25.0, 25.0)
+
+        val rotated = start.preRotate(angle, 25.0, 25.0)
+
+        val alt = start.preConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    private fun preRotateWIthOffsetWithTolerance(angle: Double) {
+        preRotateWIthOffset(angle - halfTolerance)
+        preRotateWIthOffset(angle + halfTolerance)
+    }
+
+    private fun postRotateWIthOffsetWithTolerance(angle: Double) {
+        postRotateWIthOffset(angle - halfTolerance)
+        postRotateWIthOffset(angle + halfTolerance)
+    }
+
+    private fun preRotateWithTolerance(angle: Double) {
+        preRotate(angle - halfTolerance)
+        preRotate(angle + halfTolerance)
+    }
+
+    private fun postRotateWithTolerance(angle: Double) {
+        postRotate(angle - halfTolerance)
+        postRotate(angle + halfTolerance)
+    }
+
+    private fun preRotate(angle: Double) {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setScale(0.5, 0.5)
+
+        val justRotated = start.setRotate(angle)
+
+        val rotated = start.preRotate(angle)
+
+        val alt = start.preConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    private fun postRotateWIthOffset(angle: Double) {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setScale(0.5, 0.5, 25.0, 25.0)
+
+        val justRotated = start.setRotate(angle, 25.0, 25.0)
+
+        val rotated = start.postRotate(angle, 25.0, 25.0)
+
+        val alt = start.preConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    private fun postRotate(angle: Double) {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setScale(0.5, 0.5)
+
+        val justRotated = start.setRotate(angle)
+
+        val rotated = start.postRotate(angle)
+
+        val alt = start.postConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun preScale() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0)
+
+        val justRotated = start.setScale(0.5, 0.5)
+
+        val rotated = start.preScale(0.5, 0.5)
+
+        val alt = start.postConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun preScaleWithOffset() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0, 25.0, 25.0)
+
+        val justRotated = start.setScale(0.5, 0.5, 25.0, 25.0)
+
+        val rotated = start.preScale(0.5, 0.5, 25.0, 25.0)
+
+        val alt = start.preConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun postScale() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0)
+
+        val justRotated = start.setScale(0.5, 0.5)
+
+        val rotated = start.postScale(0.5, 0.5)
+
+        val alt = start.postConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun postScaleWithOffset() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0, 25.0, 25.0)
+
+        val justRotated = start.setScale(0.5, 0.5, 25.0, 25.0)
+
+        val rotated = start.postScale(0.5, 0.5, 25.0, 25.0)
+
+        val alt = start.postConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun preSkew() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0)
+
+        val justRotated = start.setSkew(0.5, 0.5)
+
+        val rotated = start.preSkew(0.5, 0.5)
+
+        val alt = start.preConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun preSkewWithOffset() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0, 25.0, 25.0)
+
+        val justRotated = start.setSkew(0.5, 0.5, 25.0, 25.0)
+
+        val rotated = start.preSkew(0.5, 0.5, 25.0, 25.0)
+
+        val alt = start.preConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun postSkew() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0)
+
+        val justRotated = start.setSkew(0.5, 0.5)
+
+        val rotated = start.postSkew(0.5, 0.5)
+
+        val alt = start.postConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun postSkewWithOffset() {
+        val start = KtImmutableMatrix().setTranslate(50.0, 50.0).setRotate(90.0, 25.0, 25.0)
+
+        val justRotated = start.setSkew(0.5, 0.5, 25.0, 25.0)
+
+        val rotated = start.postSkew(0.5, 0.5, 25.0, 25.0)
+
+        val alt = start.postConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun preTranslate() {
+        val start = KtImmutableMatrix().setRotate(90.0).setScale(0.5, 0.5)
+
+        val justRotated = start.setTranslate(50.0, 50.0)
+
+        val rotated = start.preTranslate(50.0, 50.0)
+
+        val alt = start.preConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    @Test
+    fun postTranslate() {
+        val start = KtImmutableMatrix().setRotate(90.0).setScale(0.5, 0.5)
+
+        val justRotated = start.setTranslate(50.0, 50.0)
+
+        val rotated = start.postTranslate(50.0, 50.0)
+
+        val alt = start.postConcat(justRotated)
+
+        assertDoubleArraysEqual(rotated.values, alt.values, 0.0001)
+    }
+
+    private fun assertDoubleArraysEqual(
+        expected: DoubleArray,
+        actual: DoubleArray,
+        delta: Double,
+    ) {
+        assertThat(actual).hasSize(expected.size)
+        for (i in expected.indices) {
+            assertThat(actual[i]).isCloseTo(expected[i], delta)
+        }
+    }
+
+}
