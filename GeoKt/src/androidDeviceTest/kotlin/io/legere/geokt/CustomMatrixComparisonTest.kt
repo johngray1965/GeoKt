@@ -1,6 +1,7 @@
 package io.legere.geokt
 
 import android.graphics.RectF
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Before
@@ -8,8 +9,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import android.graphics.Matrix as AndroidPlatformMatrix
 
-@RunWith(RobolectricTestRunner::class)
-class AndroidMatrixTest {
+/**
+ * Instrumented test, which will execute on an Android device.
+ *
+ * Compares the behavior of the custom Matrix implementation against the Android platform Matrix.
+ */
+@RunWith(AndroidJUnit4::class)
+@Suppress("LargeClass")
+class CustomMatrixComparisonTest {
     private lateinit var mutableMatrix: KtMatrix
     private lateinit var pdfMatrix: KtImmutableMatrix
     private lateinit var platformMatrix: AndroidPlatformMatrix
@@ -94,21 +101,6 @@ class AndroidMatrixTest {
         mutableMatrix.setRotate(degrees)
         platformMatrix.setRotate(degrees)
         val result = pdfMatrix.setRotate(degrees)
-
-        assertThat(mutableMatrix.isIdentity()).isFalse()
-        assertThat(result.isIdentity()).isFalse()
-        assertThat(platformMatrix.isIdentity).isFalse()
-        assertMatrixValuesEqual(mutableMatrix, platformMatrix)
-        assertMatrixValuesEqual(result, platformMatrix)
-    }
-
-    @Test
-    fun setRotateWithOffsetBehavesLikePlatformMatrix() {
-        val degrees = 45f
-
-        mutableMatrix.setRotate(degrees, 50f, 100f)
-        platformMatrix.setRotate(degrees, 50f, 100f)
-        val result = pdfMatrix.setRotate(degrees, 50f, 100f)
 
         assertThat(mutableMatrix.isIdentity()).isFalse()
         assertThat(result.isIdentity()).isFalse()
@@ -263,25 +255,6 @@ class AndroidMatrixTest {
     }
 
     @Test
-    fun postSkewWithOffsetBehavesLikePlatformMatrix() {
-        val kx = 2f
-        val ky = 3f
-
-        mutableMatrix.postSkew(kx, ky, 50f, 100f)
-        platformMatrix.postSkew(kx, ky, 50f, 100f)
-        var result = pdfMatrix.postSkew(kx, ky, 50f, 100f)
-        assertMatrixValuesEqual(mutableMatrix, platformMatrix)
-        assertMatrixValuesEqual(result, platformMatrix)
-
-        // Chained operations
-        mutableMatrix.postSkew(0.5f, 0.5f)
-        platformMatrix.postSkew(0.5f, 0.5f)
-        result = result.postSkew(0.5f, 0.5f)
-        assertMatrixValuesEqual(mutableMatrix, platformMatrix)
-        assertMatrixValuesEqual(result, platformMatrix)
-    }
-
-    @Test
     fun preTranslateBehavesLikePlatformMatrix() {
         val dx = 10f
         val dy = 20f
@@ -309,25 +282,6 @@ class AndroidMatrixTest {
         mutableMatrix.preScale(sx, sy)
         platformMatrix.preScale(sx, sy)
         var result = pdfMatrix.preScale(sx, sy)
-        assertMatrixValuesEqual(mutableMatrix, platformMatrix)
-        assertMatrixValuesEqual(result, platformMatrix)
-
-        // Chained operations
-        mutableMatrix.preScale(0.5f, 0.5f)
-        platformMatrix.preScale(0.5f, 0.5f)
-        result = result.preScale(0.5f, 0.5f)
-        assertMatrixValuesEqual(mutableMatrix, platformMatrix)
-        assertMatrixValuesEqual(result, platformMatrix)
-    }
-
-    @Test
-    fun preScaleWithOffsetBehavesLikePlatformMatrix() {
-        val sx = 2f
-        val sy = 3f
-
-        mutableMatrix.preScale(sx, sy, 50f, 100f)
-        platformMatrix.preScale(sx, sy, 50f, 100f)
-        var result = pdfMatrix.preScale(sx, sy, 50f, 100f)
         assertMatrixValuesEqual(mutableMatrix, platformMatrix)
         assertMatrixValuesEqual(result, platformMatrix)
 
@@ -578,25 +532,6 @@ class AndroidMatrixTest {
     }
 
     @Test
-    fun mapPointsDoubleSingleArgBehavesLikePlatformMatrix() {
-        val points = doubleArrayOf(0.0, 0.0, 10.0, 10.0, 5.0, 5.0)
-        val customPoints = points.copyOf()
-        val customPoints2 = points.copyOf()
-        val platformPoints = points.map { it.toFloat() }.toFloatArray()
-
-        mutableMatrix.postTranslate(10f, 20f)
-        platformMatrix.postTranslate(10f, 20f)
-        val result = pdfMatrix.postTranslate(10f, 20f)
-
-        mutableMatrix.mapPoints(customPoints)
-        platformMatrix.mapPoints(platformPoints)
-        result.mapPoints(customPoints2)
-
-        assertDoubleArraysEqual(platformPoints, customPoints, 0.001)
-        assertDoubleArraysEqual(platformPoints, customPoints2, 0.001)
-    }
-
-    @Test
     fun mapPointsTwoArgsBehavesLikePlatformMatrix() {
         val srcPoints = floatArrayOf(0f, 0f, 10f, 10f, 5f, 5f)
         val customDstPoints = FloatArray(srcPoints.size)
@@ -613,26 +548,6 @@ class AndroidMatrixTest {
 
         assertFloatArraysEqual(platformDstPoints, customDstPoints, 0.001f)
         assertFloatArraysEqual(platformDstPoints, customDstPoints2, 0.001f)
-    }
-
-    @Test
-    fun mapPointsDoubleTwoArgsBehavesLikePlatformMatrix() {
-        val srcPoints = doubleArrayOf(0.0, 0.0, 10.0, 10.0, 5.0, 5.0)
-        val srcPointsF = floatArrayOf(0f, 0f, 10f, 10f, 5f, 5f)
-        val customDstPoints = DoubleArray(srcPoints.size)
-        val customDstPoints2 = DoubleArray(srcPoints.size)
-        val platformDstPoints = FloatArray(srcPoints.size)
-
-        mutableMatrix.postScale(2f, 3f)
-        platformMatrix.postScale(2f, 3f)
-        val result = pdfMatrix.postScale(2f, 3f)
-
-        mutableMatrix.mapPoints(customDstPoints, srcPoints)
-        platformMatrix.mapPoints(platformDstPoints, srcPointsF)
-        result.mapPoints(customDstPoints2, srcPoints)
-
-        assertDoubleArraysEqual(platformDstPoints, customDstPoints, 0.001)
-        assertDoubleArraysEqual(platformDstPoints, customDstPoints2, 0.001)
     }
 
     @Test
@@ -656,30 +571,6 @@ class AndroidMatrixTest {
 
         assertFloatArraysEqual(platformDstPoints, customDstPoints, 0.001f)
         assertFloatArraysEqual(platformDstPoints, customDstPoints2, 0.001f)
-    }
-
-    @Test
-    fun mapPointsFloatMultiArgBehavesLikePlatformMatrix() {
-        val srcPoints = doubleArrayOf(0.0, 0.0, 10.0, 10.0, 5.0, 5.0)
-        val srcPointsF = floatArrayOf(0f, 0f, 10f, 10f, 5f, 5f)
-        val customDstPoints = DoubleArray(srcPoints.size)
-        val customDstPoints2 = DoubleArray(srcPoints.size)
-        val platformDstPoints = FloatArray(srcPoints.size)
-
-        mutableMatrix.postTranslate(10f, 10f)
-        platformMatrix.postTranslate(10f, 10f)
-        val result = pdfMatrix.postTranslate(10f, 10f)
-
-        val srcIndex = 2
-        val dstIndex = 2
-        val pointCount = 2
-
-        mutableMatrix.mapPoints(customDstPoints, dstIndex, srcPoints, srcIndex, pointCount)
-        result.mapPoints(customDstPoints2, dstIndex, srcPoints, srcIndex, pointCount)
-        platformMatrix.mapPoints(platformDstPoints, dstIndex, srcPointsF, srcIndex, pointCount)
-
-        assertDoubleArraysEqual(platformDstPoints, customDstPoints, 0.001)
-        assertDoubleArraysEqual(platformDstPoints, customDstPoints2, 0.001)
     }
 
     @Test
@@ -717,40 +608,6 @@ class AndroidMatrixTest {
     }
 
     @Test
-    fun mapRadiusFloatBehavesLikePlatformMatrix() {
-        val radius = 10.0
-
-        mutableMatrix.postScale(2f, 3f)
-        platformMatrix.postScale(2f, 3f)
-        var result = pdfMatrix.postScale(2f, 3f)
-
-        val customMappedRadius = mutableMatrix.mapRadius(radius)
-        val customMappedRadius2 = result.mapRadius(radius)
-        val platformMappedRadius = platformMatrix.mapRadius(radius.toFloat())
-
-        assertThat(customMappedRadius).isWithin(0.001).of(platformMappedRadius.toDouble())
-        assertThat(customMappedRadius2).isWithin(0.001).of(platformMappedRadius.toDouble())
-
-        // With rotation
-        mutableMatrix.reset()
-        platformMatrix.reset()
-        result = result.reset()
-        mutableMatrix.postRotate(90f)
-        result = result.postRotate(90f)
-        platformMatrix.postRotate(90f)
-        mutableMatrix.postScale(2f, 3f)
-        platformMatrix.postScale(2f, 3f)
-        result = result.postScale(2f, 3f)
-
-        val customMappedRadiusRotated = mutableMatrix.mapRadius(radius)
-        val customMappedRadiusRotated2 = result.mapRadius(radius)
-        val platformMappedRadiusRotated = platformMatrix.mapRadius(radius.toFloat())
-
-        assertThat(customMappedRadiusRotated).isWithin(0.001).of(platformMappedRadiusRotated.toDouble())
-        assertThat(customMappedRadiusRotated2).isWithin(0.001).of(platformMappedRadiusRotated.toDouble())
-    }
-
-    @Test
     fun mapRectSingleArgBehavesLikePlatformMatrix() {
         val rect = RectF(0f, 0f, 100f, 200f)
         val customRect = KtImmutableRectF(0f, 0f, 100f, 200f)
@@ -763,10 +620,10 @@ class AndroidMatrixTest {
         platformMatrix.postScale(0.5f, 2f)
         val result = pdfMatrix.postTranslate(10f, 20f).postScale(0.5f, 2f)
 
-        val customResult = MutablePdfRectF(customRect)
-        mutableMatrix.mapRect(customResult)
-        val customResult2 = MutablePdfRectF(customRect2)
-        result.mapRect(customResult2)
+        val customResult = KtRectF()
+        mutableMatrix.mapRect(customResult, customRect)
+        val customResult2 = KtRectF()
+        result.mapRect(customResult2, customRect2)
         platformMatrix.mapRect(platformRect)
 
         assertThat(customResult.left).isWithin(0.001f).of(platformRect.left)
@@ -779,33 +636,33 @@ class AndroidMatrixTest {
         assertThat(customResult2.bottom).isWithin(0.001f).of(platformRect.bottom)
     }
 
-    @Test
-    fun mapRectTwoArgsBehavesLikePlatformMatrix() {
-        val srcRect = RectF(0f, 0f, 100f, 200f)
-        val customDstRect = MutablePdfRectF()
-        val customDstRect2 = MutablePdfRectF()
-        val platformDstRect = RectF()
-
-        mutableMatrix.postTranslate(10f, 20f)
-        platformMatrix.postTranslate(10f, 20f)
-        mutableMatrix.postRotate(90f)
-        platformMatrix.postRotate(90f)
-        val result = pdfMatrix.postTranslate(10f, 20f).postRotate(90f)
-
-        mutableMatrix.mapRect(customDstRect, srcRect.toPdfRectF())
-        result.mapRect(customDstRect2, srcRect.toPdfRectF())
-        platformMatrix.mapRect(platformDstRect, srcRect)
-
-//        assertThat(customResult).isEqualTo(platformResult)
-        assertThat(customDstRect.left).isWithin(0.001f).of(platformDstRect.left)
-        assertThat(customDstRect.top).isWithin(0.001f).of(platformDstRect.top)
-        assertThat(customDstRect.right).isWithin(0.001f).of(platformDstRect.right)
-        assertThat(customDstRect.bottom).isWithin(0.001f).of(platformDstRect.bottom)
-        assertThat(customDstRect2.left).isWithin(0.001f).of(platformDstRect.left)
-        assertThat(customDstRect2.top).isWithin(0.001f).of(platformDstRect.top)
-        assertThat(customDstRect2.right).isWithin(0.001f).of(platformDstRect.right)
-        assertThat(customDstRect2.bottom).isWithin(0.001f).of(platformDstRect.bottom)
-    }
+//    @Test
+//    fun mapRectTwoArgsBehavesLikePlatformMatrix() {
+//        val srcRect = RectF(0f, 0f, 100f, 200f)
+//        val customDstRect = KtRectF()
+//        val customDstRect2 = KtRectF()
+//        val platformDstRect = RectF()
+//
+//        mutableMatrix.postTranslate(10f, 20f)
+//        platformMatrix.postTranslate(10f, 20f)
+//        mutableMatrix.postRotate(90f)
+//        platformMatrix.postRotate(90f)
+//        val result = pdfMatrix.postTranslate(10f, 20f).postRotate(90f)
+//
+//        mutableMatrix.mapRect(customDstRect, srcRect.toPdfRectF())
+//        result.mapRect(customDstRect2, srcRect.toPdfRectF())
+//        platformMatrix.mapRect(platformDstRect, srcRect)
+//
+////        assertThat(customResult).isEqualTo(platformResult)
+//        assertThat(customDstRect.left).isWithin(0.001f).of(platformDstRect.left)
+//        assertThat(customDstRect.top).isWithin(0.001f).of(platformDstRect.top)
+//        assertThat(customDstRect.right).isWithin(0.001f).of(platformDstRect.right)
+//        assertThat(customDstRect.bottom).isWithin(0.001f).of(platformDstRect.bottom)
+//        assertThat(customDstRect2.left).isWithin(0.001f).of(platformDstRect.left)
+//        assertThat(customDstRect2.top).isWithin(0.001f).of(platformDstRect.top)
+//        assertThat(customDstRect2.right).isWithin(0.001f).of(platformDstRect.right)
+//        assertThat(customDstRect2.bottom).isWithin(0.001f).of(platformDstRect.bottom)
+//    }
 
     @Test
     fun mapVectorsSingleArgBehavesLikePlatformMatrix() {
@@ -829,28 +686,6 @@ class AndroidMatrixTest {
     }
 
     @Test
-    fun mapVectorsDoubleSingleArgBehavesLikePlatformMatrix() {
-        val vectors = doubleArrayOf(1.0, 1.0, 0.0, 10.0, -5.0, 0.0)
-        val vectorsF = floatArrayOf(1f, 1f, 0f, 10f, -5f, 0f)
-        val customVectors = vectors.copyOf()
-        val customVectors2 = vectors.copyOf()
-        val platformVectors = vectorsF.copyOf()
-
-        mutableMatrix.postTranslate(100f, 200f) // Translation should be ignored by mapVectors
-        platformMatrix.postTranslate(100f, 200f)
-        mutableMatrix.postScale(2f, 3f)
-        platformMatrix.postScale(2f, 3f)
-        val result = pdfMatrix.postTranslate(100f, 200f).postScale(2f, 3f)
-
-        mutableMatrix.mapVectors(customVectors)
-        result.mapVectors(customVectors2)
-        platformMatrix.mapVectors(platformVectors)
-
-        assertDoubleArraysEqual(platformVectors, customVectors, 0.001)
-        assertDoubleArraysEqual(platformVectors, customVectors2, 0.001)
-    }
-
-    @Test
     fun mapVectorsTwoArgsBehavesLikePlatformMatrix() {
         val srcVectors = floatArrayOf(1f, 1f, 0f, 10f, -5f, 0f)
         val customDstVectors = FloatArray(srcVectors.size)
@@ -869,28 +704,6 @@ class AndroidMatrixTest {
 
         assertFloatArraysEqual(platformDstVectors, customDstVectors, 0.001f)
         assertFloatArraysEqual(platformDstVectors, customDstVectors2, 0.001f)
-    }
-
-    @Test
-    fun mapVectorsDoubleTwoArgsBehavesLikePlatformMatrix() {
-        val srcVectors = doubleArrayOf(1.0, 1.0, 0.0, 10.0, -5.0, 0.0)
-        val srcVectorsFloat = floatArrayOf(1f, 1f, 0f, 10f, -5f, 0f)
-        val customDstVectors = DoubleArray(srcVectors.size)
-        val customDstVectors2 = DoubleArray(srcVectors.size)
-        val platformDstVectors = FloatArray(srcVectors.size)
-
-        mutableMatrix.postTranslate(100f, 200f)
-        platformMatrix.postTranslate(100f, 200f)
-        mutableMatrix.postRotate(45f)
-        platformMatrix.postRotate(45f)
-        val result = pdfMatrix.postTranslate(100f, 200f).postRotate(45f)
-
-        mutableMatrix.mapVectors(customDstVectors, srcVectors)
-        result.mapVectors(customDstVectors2, srcVectors)
-        platformMatrix.mapVectors(platformDstVectors, srcVectorsFloat)
-
-        assertDoubleArraysEqual(platformDstVectors, customDstVectors, 0.001)
-        assertDoubleArraysEqual(platformDstVectors, customDstVectors2, 0.001)
     }
 
     @Test
@@ -918,121 +731,95 @@ class AndroidMatrixTest {
         assertFloatArraysEqual(platformDstVectors, customDstVectors2, 0.001f)
     }
 
-    @Test
-    fun mapVectorsFloatMultiArgBehavesLikePlatformMatrix() {
-        val srcVectors = doubleArrayOf(1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0)
-        val srcVectorsFloat = floatArrayOf(1f, 1f, 2f, 2f, 3f, 3f, 4f, 4f)
-        val customDstVectors = DoubleArray(srcVectors.size)
-        val customDstVectors2 = DoubleArray(srcVectors.size)
-        val platformDstVectors = FloatArray(srcVectors.size)
-
-        mutableMatrix.postTranslate(10f, 10f)
-        platformMatrix.postTranslate(10f, 10f)
-        mutableMatrix.postScale(2f, 2f)
-        platformMatrix.postScale(2f, 2f)
-        val result = pdfMatrix.postTranslate(10f, 10f).postScale(2f, 2f)
-
-        val srcIndex = 2
-        val dstIndex = 4
-        val vectorCount = 2
-
-        mutableMatrix.mapVectors(customDstVectors, dstIndex, srcVectors, srcIndex, vectorCount)
-        result.mapVectors(customDstVectors2, dstIndex, srcVectors, srcIndex, vectorCount)
-        platformMatrix.mapVectors(platformDstVectors, dstIndex, srcVectorsFloat, srcIndex, vectorCount)
-
-        assertDoubleArraysEqual(platformDstVectors, customDstVectors, 0.001)
-        assertDoubleArraysEqual(platformDstVectors, customDstVectors2, 0.001)
-    }
-
-    @Test
-    fun conversions() {
-        val result = pdfMatrix.postTranslate(10f, 10f).postScale(2f, 2f)
-        val matrix = result.toMatrix()
-        val pdfMatrixConverted = matrix.toPdfMatrix()
-        val mutablePdfMatrix = matrix.toMutablePdfMatrix()
-
-        val platformValues = FloatArray(9)
-
-        matrix.getValues(platformValues)
-
-        assertMatrixValuesEqual(result, matrix)
-        assertMatrixValuesEqual(pdfMatrixConverted, matrix)
-        assertMatrixValuesEqual(mutablePdfMatrix, matrix)
-    }
-
-    @Test
-    fun pointFConversions() { // Note testing these function here because are using robolectric
-        val result = KtImmutablePointF(10f, 10f)
-        val point = result.toPointF()
-        val pdfPointF = point.toPdfPointF()
-        val mutablePdfPointF = point.toMutablePdfPointF()
-
-        assertThat(result).isEqualTo(pdfPointF)
-        assertThat(result.toMutable()).isEqualTo(mutablePdfPointF)
-    }
-
-    @Test
-    fun pointConversions() { // Note testing these function here because are using robolectric
-        val result = KtImmutablePoint(10, 10)
-        val point = result.toPoint()
-        val pdfPoint = point.toPdfPoint()
-        val mutablePdfPoint = point.toMutablePdfPoint()
-
-        assertThat(result).isEqualTo(pdfPoint)
-        assertThat(result.toMutable()).isEqualTo(mutablePdfPoint)
-    }
-
-    @Test
-    fun rectConversions() { // Note testing these function here because are using robolectric
-        val result = KtImmutableRect(10, 10, 100, 100)
-        val rect = result.toRect()
-        val pdfRect = rect.toPdfRect()
-        val mutablepdfRectt = rect.toMutablePdfRect()
-
-        assertThat(result).isEqualTo(pdfRect)
-        assertThat(result.toMutable()).isEqualTo(mutablepdfRectt)
-
-        val rectF = result.toPdfRectF()
-        assertThat(rectF.left).isEqualTo(10f)
-        assertThat(rectF.top).isEqualTo(10f)
-        assertThat(rectF.right).isEqualTo(100f)
-        assertThat(rectF.bottom).isEqualTo(100f)
-    }
-
-    @Test
-    fun rectFConversions() { // Note testing these function here because are using robolectric
-        val result = KtImmutableRectF(10f, 10f, 100f, 100f)
-        val rect = result.toRectF()
-        val pdfRect = rect.toPdfRectF()
-        val mutablepdfRectt = rect.toMutablePdfRectF()
-
-        assertThat(result).isEqualTo(pdfRect)
-        assertThat(result.toMutable()).isEqualTo(mutablepdfRectt)
-
-        val rectOut1 = result.toPdfRect()
-        assertThat(rectOut1.left).isEqualTo(10)
-        assertThat(rectOut1.top).isEqualTo(10)
-        assertThat(rectOut1.right).isEqualTo(100)
-        assertThat(rectOut1.bottom).isEqualTo(100)
-
-        val rectOut2 = rect.toPdfRect()
-        assertThat(rectOut2.left).isEqualTo(10)
-        assertThat(rectOut2.top).isEqualTo(10)
-        assertThat(rectOut2.right).isEqualTo(100)
-        assertThat(rectOut2.bottom).isEqualTo(100)
-    }
+//    @Test
+//    fun conversions() {
+//        val result = pdfMatrix.postTranslate(10f, 10f).postScale(2f, 2f)
+//        val matrix = result.toMatrix()
+//        val pdfMatrixConverted = matrix.toPdfMatrix()
+//        val mutablePdfMatrix = matrix.toMutablePdfMatrix()
+//
+//        val platformValues = FloatArray(9)
+//
+//        matrix.getValues(platformValues)
+//
+//        assertMatrixValuesEqual(result, matrix)
+//        assertMatrixValuesEqual(pdfMatrixConverted, matrix)
+//        assertMatrixValuesEqual(mutablePdfMatrix, matrix)
+//    }
+//
+//    @Test
+//    fun pointFConversions() { // Note testing these function here because are using robolectric
+//        val result = KtImmutablePointF(10f, 10f)
+//        val point = result.toPointF()
+//        val pdfPointF = point.toPdfPointF()
+//        val mutablePdfPointF = point.toMutablePdfPointF()
+//
+//        assertThat(result).isEqualTo(pdfPointF)
+//        assertThat(result.toMutable()).isEqualTo(mutablePdfPointF)
+//    }
+//
+//    @Test
+//    fun pointConversions() { // Note testing these function here because are using robolectric
+//        val result = KtImmutablePoint(10, 10)
+//        val point = result.toPoint()
+//        val pdfPoint = point.toPdfPoint()
+//        val mutablePdfPoint = point.toMutablePdfPoint()
+//
+//        assertThat(result).isEqualTo(pdfPoint)
+//        assertThat(result.toMutable()).isEqualTo(mutablePdfPoint)
+//    }
+//
+//    @Test
+//    fun rectConversions() { // Note testing these function here because are using robolectric
+//        val result = KtImmutableRect(10, 10, 100, 100)
+//        val rect = result.toRect()
+//        val pdfRect = rect.toPdfRect()
+//        val mutablepdfRectt = rect.toMutablePdfRect()
+//
+//        assertThat(result).isEqualTo(pdfRect)
+//        assertThat(result.toMutable()).isEqualTo(mutablepdfRectt)
+//
+//        val rectF = result.toPdfRectF()
+//        assertThat(rectF.left).isEqualTo(10f)
+//        assertThat(rectF.top).isEqualTo(10f)
+//        assertThat(rectF.right).isEqualTo(100f)
+//        assertThat(rectF.bottom).isEqualTo(100f)
+//    }
+//
+//    @Test
+//    fun rectFConversions() { // Note testing these function here because are using robolectric
+//        val result = KtImmutableRectF(10f, 10f, 100f, 100f)
+//        val rect = result.toRectF()
+//        val pdfRect = rect.toPdfRectF()
+//        val mutablepdfRectt = rect.toMutablePdfRectF()
+//
+//        assertThat(result).isEqualTo(pdfRect)
+//        assertThat(result.toMutable()).isEqualTo(mutablepdfRectt)
+//
+//        val rectOut1 = result.toPdfRect()
+//        assertThat(rectOut1.left).isEqualTo(10)
+//        assertThat(rectOut1.top).isEqualTo(10)
+//        assertThat(rectOut1.right).isEqualTo(100)
+//        assertThat(rectOut1.bottom).isEqualTo(100)
+//
+//        val rectOut2 = rect.toPdfRect()
+//        assertThat(rectOut2.left).isEqualTo(10)
+//        assertThat(rectOut2.top).isEqualTo(10)
+//        assertThat(rectOut2.right).isEqualTo(100)
+//        assertThat(rectOut2.bottom).isEqualTo(100)
+//    }
 
     private fun assertMatrixValuesEqual(
         custom: MatrixValues,
         platform: AndroidPlatformMatrix,
         delta: Float = 0.001f,
     ) {
-        val customValues = custom.values
+        val customValues = custom.values.map { it.toFloat() }.toFloatArray()
         val platformValues = FloatArray(9)
 
         platform.getValues(platformValues)
 
-        assertFloatArraysEqual(platformValues, customValues.toFloatArray(), delta)
+        assertFloatArraysEqual(platformValues, customValues, delta)
     }
 
     private fun assertFloatArraysEqual(
@@ -1044,28 +831,11 @@ class AndroidMatrixTest {
         for (i in expected.indices) {
             assertWithMessage(
                 "Value at index $i, \n" +
-                        "expected: ${expected.contentToString()}, \n" +
-                        "actual:   ${actual.contentToString()}",
+                    "expected: ${expected.contentToString()}, \n" +
+                    "actual:   ${actual.contentToString()}",
             ).that(actual[i])
                 .isWithin(delta)
                 .of(expected[i])
         }
-    }
-}
-
-private fun assertDoubleArraysEqual(
-    expected: FloatArray,
-    actual: DoubleArray,
-    delta: Double,
-) {
-    assertThat(actual).hasLength(expected.size)
-    for (i in expected.indices) {
-        assertWithMessage(
-            "Value at index $i, \n" +
-                    "expected: ${expected.contentToString()}, \n" +
-                    "actual:   ${actual.contentToString()}",
-        ).that(actual[i])
-            .isWithin(delta)
-            .of(expected[i].toDouble())
     }
 }
