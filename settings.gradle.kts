@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "GeoKt"
 include(":GeoKt")
+include(":benchmarks")

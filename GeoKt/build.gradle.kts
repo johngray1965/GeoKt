@@ -82,8 +82,8 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.test)
                 implementation(libs.truth)
-                implementation(libs.androidx.test.ext.junit)
-                implementation(libs.androidx.test.espresso.core)
+                implementation(libs.ext.junit)
+                implementation(libs.espresso.core)
             }
         }
     }
@@ -104,31 +104,31 @@ mavenPublishing {
 
     signAllPublications()
 
-    coordinates(group.toString(), "library", version.toString())
+    coordinates(group.toString(), "geokt", version.toString())
 
     pom {
-        name = "My library"
-        description = "A library."
-        inceptionYear = "2024"
-        url = "https://github.com/kotlin/multiplatform-library-template/"
+        name = "GeoKt"
+        description = "KMP Matrix, Rect, RectF, Point, PointF compatbile with Android's."
+        inceptionYear = "2026"
+        url = "https://github.com/johngray1965/GeoKt/"
         licenses {
             license {
-                name = "XXX"
-                url = "YYY"
-                distribution = "ZZZ"
+                name = "Apache License, Version 2.0"
+                url = "http://www.apache.org/licenses/LICENSE-2.0"
+                distribution = "repo"
             }
         }
         developers {
             developer {
-                id = "XXX"
-                name = "YYY"
-                url = "ZZZ"
+                id = "johngray1965"
+                name = "John Gray"
+                url = "scm:git@github.com:johngray1965/GeoKt.git"
             }
         }
         scm {
-            url = "XXX"
-            connection = "YYY"
-            developerConnection = "ZZZ"
+            url = "https://github.com/johngray1965/GeoKt"
+            connection = "scm:git@github.com:johngray1965/GeoKt.git"
+            developerConnection = "scm:git@github.com:johngray1965/GeoKt.git"
         }
     }
 }
