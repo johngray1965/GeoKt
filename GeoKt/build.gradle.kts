@@ -130,54 +130,8 @@ signing {
     }
 }
 
-//publishOnCentral {
-////    repoOwner.set("johngray1965")
-////    projectLongName.set("Geometry classes for Kotlin Multiplatform Project")
-////    projectDescription.set("Geometry classes for Kotlin Multiplatform Project")
-//
-//    repoOwner = "johngray1965"
-////    projectDescription.set(rootProject.properties["POM_DESCRIPTION"] as String)
-//// The following values are the default, if they are ok with you, just omit them
-//    projectDescription = "Geometry classes for Kotlin Multiplatform Project"
-//    projectLongName = "GeoKt"
-//    licenseName = "Apache License, Version 2.0"
-//    licenseUrl = "http://www.apache.org/licenses/LICENSE-2.0"
-//    projectUrl.set("https://github.com/johngray1965/GeoKt")
-//    scmConnection.set("scm:git:https://github.com/johngray1965/GeoKt.git")
-//
-//    repository("https://maven.pkg.github.com/johngray1965/GeoKt".lowercase()) {
-//        user.set(
-//            System.getenv("GITHUB_USERNAME") ?: project.findProperty("GITHUB_USERNAME") as? String
-//            ?: ""
-//        )
-//        password.set(
-//            System.getenv("GITHUB_TOKEN") ?: project.findProperty("GITHUB_TOKEN") as? String ?: ""
-//        )
-//    }
-//    publishing {
-//        publications {
-//            withType<MavenPublication> {
-//                pom {
-//                    developers {
-//                        developer {
-//                            id.set("johngray1965")
-//                            name = "John Gray"
-//                            email = "johngray1965@gmail.com"
-//                            url = "https://github.com/johngray1965"
-//                            organization = "Legere"
-//                            organizationUrl = "https://legere.io"
-//
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//    }
-//}
-
-
 mavenPublishing {
-    publishToMavenCentral()
+    publishToMavenCentral(automaticRelease = true)
 
     signAllPublications()
 
