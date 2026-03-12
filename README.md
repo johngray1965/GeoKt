@@ -1,5 +1,7 @@
 # GeoKt - Geometery classes: 
 
+[![Build Status](https://github.com/johngray1965/GeoKt/actions/workflows/build.yml/badge.svg)](https://github.com/johngray1965/GeoKt/actions/workflows/build.yml)
+
 Platform independent replacement for Android's with Immutable variants.
 
 ## Usage
