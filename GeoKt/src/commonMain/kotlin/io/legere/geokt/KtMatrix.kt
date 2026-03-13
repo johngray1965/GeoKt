@@ -254,6 +254,10 @@ data class KtMatrix(
         return this
     }
 
+    fun setPolyToPoly(src: FloatArray, srcIndex: Int, dst: FloatArray, dstIndex: Int, pointCount: Int): Boolean {
+        return values.setPolyToPoly(src, srcIndex, dst, dstIndex, pointCount)
+    }
+
     fun preTranslate(
         dx: Float,
         dy: Float,
@@ -552,6 +556,15 @@ data class KtImmutableMatrix(
     fun invert(): KtImmutableMatrix? = values.invert()?.let { KtImmutableMatrix(it) }
 
     // --- Immutable modifiers (return new instance) ---
+
+    fun setPolyToPoly(src: FloatArray, srcIndex: Int, dst: FloatArray, dstIndex: Int, pointCount: Int): KtImmutableMatrix? {
+        val result = DoubleArray(THREE_BY_THREE)
+        return if (result.setPolyToPoly(src, srcIndex, dst, dstIndex, pointCount)) {
+            KtImmutableMatrix(result)
+        } else {
+            null
+        }
+    }
 
     fun setTranslate(
         dx: Float,
@@ -2106,3 +2119,145 @@ internal fun DoubleArray.mapVectors(
         dst[di + 1] = (this[SKEW_Y] * x + this[SCALE_Y] * y)
     }
 }
+
+internal fun DoubleArray.setPolyToPoly(src: FloatArray, srcIndex: Int, dst: FloatArray, dstIndex: Int, pointCount: Int): Boolean {
+    if (pointCount !in 0..4) {
+        throw IllegalArgumentException("pointCount must be between 0 and 4")
+    }
+
+    if (pointCount == 0) {
+        reset()
+        return true
+    }
+    if (pointCount == 1) {
+        setTranslate(dst[dstIndex] - src[srcIndex], dst[dstIndex + 1] - src[srcIndex + 1])
+        return true
+    }
+
+    val srcPoints = src.slice(srcIndex until srcIndex + pointCount * 2).map { it.toDouble() }
+    val dstPoints = dst.slice(dstIndex until dstIndex + pointCount * 2).map { it.toDouble() }
+
+    val result = polyToPoly(srcPoints.toDoubleArray(), dstPoints.toDoubleArray(), pointCount)
+    if (result != null) {
+        result.copyInto(this)
+        return true
+    }
+    return false
+}
+
+private fun polyToPoly(src: DoubleArray, dst: DoubleArray, pointCount: Int): DoubleArray? {
+    val tempMap = DoubleArray(THREE_BY_THREE)
+    if (!polyToPolyProc(src, tempMap)) {
+        return null
+    }
+    val inverse = tempMap.invert() ?: return null
+    if (!polyToPolyProc(dst, tempMap)) {
+        return null
+    }
+    tempMap.preConcat(inverse)
+    return tempMap
+}
+
+private fun polyToPolyProc(src: DoubleArray, dst: DoubleArray): Boolean {
+
+    // we have an array of doubles,
+    // 4 doubles -> 2  points, 6 doubles -> 3 points, 8 doubles -> 4 points
+    return when (src.size) {
+        4 -> poly2Proc(src, dst)
+        6 -> poly3Proc(src, dst)
+        8 -> poly4Proc(src, dst)
+        else -> false
+    }
+}
+
+private fun poly2Proc(src: DoubleArray, dst: DoubleArray): Boolean {
+    dst[SCALE_X] = src[1*2+1] - src[0*2+1]
+    dst[SKEW_Y]  = src[0*2] - src[1*2]
+    dst[PERSP_0] = 0.0
+
+    dst[SKEW_X]  = src[1*2] - src[0*2]
+    dst[SCALE_Y] = src[1*2+1] - src[0*2+1]
+    dst[PERSP_1] = 0.0
+
+    dst[TRANS_X] = src[0]
+    dst[TRANS_Y] = src[0+1]
+    dst[PERSP_2] = 1.0
+    return true
+
+}
+private fun poly3Proc(src: DoubleArray, dst: DoubleArray): Boolean {
+    dst[SCALE_X] = src[2*2] - src[0*2]
+    dst[SKEW_Y]  = src[2*2+1] - src[0*2+1]
+    dst[PERSP_0] = 0.0
+
+    dst[SKEW_X]  = src[1*2] - src[0*2]
+    dst[SCALE_Y] =src[1*2+1] - src[0*2+1]
+    dst[PERSP_1] = 0.0
+
+    dst[TRANS_X] = src[0]
+    dst[TRANS_Y] = src[0+1]
+    dst[PERSP_2] = 1.0
+    return true
+
+}
+private fun poly4Proc(src: DoubleArray, dst: DoubleArray): Boolean {
+    var   a1: Double
+    var  a2: Double
+
+    val x0 = src[2*2]- src[0*2]
+    val y0 = src[2*2+1] - src[0*2+1]
+    val x1 = src[2*2] - src[1*2]
+    val y1 = src[2*2+1] - src[1*2+1]
+    val x2 = src[2*2]- src[3*2]
+    val y2 = src[2*2+1] - src[3*2+1]
+
+    /* check if abs(x2) > abs(y2) */
+    if (fastAbs(x2) > fastAbs(y2)) {
+        val denom = ieeeDivide(x1 * y2, x2) - y1
+        if (checkForZero(denom)) {
+            return false
+        }
+        a1 = (((x0 - x1) * y2 / x2) - y0 + y1) / denom
+    } else {
+        val denom = x1 - ieeeDivide(y1 * x2, y2)
+        if (checkForZero(denom)) {
+            return false
+        }
+        a1 = (x0 - x1 - ieeeDivide((y0 - y1) * x2, y2)) / denom
+    }
+
+    /* check if abs(x1) > abs(y1) */
+    if ( fastAbs(x1) > fastAbs(y1)) {
+        val denom = y2 - ieeeDivide(x2 * y1, x1)
+        if (checkForZero(denom)) {
+            return false
+        }
+        a2 = (y0 - y2 - ieeeDivide((x0 - x2) * y1, x1)) / denom
+    } else {
+        val denom = ieeeDivide(y2 * x1, y1) - x2
+        if (checkForZero(denom)) {
+            return false
+        }
+        a2 = (ieeeDivide((y0 - y2) * x1, y1) - x0 + x2) / denom
+    }
+
+
+    dst[SCALE_X] = a2 * src[3*2] + src[3*2] - src[0*2]
+    dst[SKEW_Y]  = a2 * src[3*2+1] + src[3*2+1] - src[0*2+1]
+    dst[PERSP_0] = a2
+
+    dst[SKEW_X]  = a1 * src[1*2] + src[1*2] - src[0*2]
+    dst[SCALE_Y] =a1 * src[1*2+1] + src[1*2+1] - src[0*2+1]
+    dst[PERSP_1] = a1
+
+    dst[TRANS_X] = src[0*2]
+    dst[TRANS_Y] = src[0*2+1]
+    dst[PERSP_2] = 1.0
+    return true
+
+}
+
+fun ieeeDivide(a: Double, b: Double): Double = a / b
+
+fun checkForZero(a: Double): Boolean = a * a == 0.0
+
