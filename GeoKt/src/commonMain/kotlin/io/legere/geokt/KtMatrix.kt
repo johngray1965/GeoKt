@@ -22,6 +22,7 @@ const val PERSP_2 = 8
 const val ZERO_TOLERANCE = 1.0 / (1 shl 16)
 
 const val DEGREES_TO_RADIANS = (PI / 180.0)
+
 // Custom abs function for Double to avoid potential overhead of kotlin.math.abs
 private fun fastAbs(x: Double) = if (x < 0) -x else x
 
@@ -105,7 +106,6 @@ interface MatrixValues {
         vectorCount: Int,
     ) = values.mapVectors(dst, dstIndex, src, srcIndex, vectorCount)
 }
-
 
 data class KtMatrix(
     override val values: DoubleArray =
@@ -254,9 +254,13 @@ data class KtMatrix(
         return this
     }
 
-    fun setPolyToPoly(src: FloatArray, srcIndex: Int, dst: FloatArray, dstIndex: Int, pointCount: Int): Boolean {
-        return values.setPolyToPoly(src, srcIndex, dst, dstIndex, pointCount)
-    }
+    fun setPolyToPoly(
+        src: FloatArray,
+        srcIndex: Int,
+        dst: FloatArray,
+        dstIndex: Int,
+        pointCount: Int,
+    ): Boolean = values.setPolyToPoly(src, srcIndex, dst, dstIndex, pointCount)
 
     fun preTranslate(
         dx: Float,
@@ -557,7 +561,13 @@ data class KtImmutableMatrix(
 
     // --- Immutable modifiers (return new instance) ---
 
-    fun setPolyToPoly(src: FloatArray, srcIndex: Int, dst: FloatArray, dstIndex: Int, pointCount: Int): KtImmutableMatrix? {
+    fun setPolyToPoly(
+        src: FloatArray,
+        srcIndex: Int,
+        dst: FloatArray,
+        dstIndex: Int,
+        pointCount: Int,
+    ): KtImmutableMatrix? {
         val result = DoubleArray(THREE_BY_THREE)
         return if (result.setPolyToPoly(src, srcIndex, dst, dstIndex, pointCount)) {
             KtImmutableMatrix(result)
@@ -612,13 +622,19 @@ data class KtImmutableMatrix(
         py: Double,
     ): KtImmutableMatrix = KtImmutableMatrix(DoubleArray(THREE_BY_THREE).apply { setRotate(degrees, px, py) })
 
-    fun setRotate(degrees: Float): KtImmutableMatrix = KtImmutableMatrix(DoubleArray(
-        THREE_BY_THREE
-    ).apply { setRotate(degrees) })
+    fun setRotate(degrees: Float): KtImmutableMatrix =
+        KtImmutableMatrix(
+            DoubleArray(
+                THREE_BY_THREE,
+            ).apply { setRotate(degrees) },
+        )
 
-    fun setRotate(degrees: Double): KtImmutableMatrix = KtImmutableMatrix(DoubleArray(
-        THREE_BY_THREE
-    ).apply { setRotate(degrees) })
+    fun setRotate(degrees: Double): KtImmutableMatrix =
+        KtImmutableMatrix(
+            DoubleArray(
+                THREE_BY_THREE,
+            ).apply { setRotate(degrees) },
+        )
 
     fun setSkew(
         kx: Float,
@@ -814,8 +830,8 @@ internal fun DoubleArray.reset() {
 
 internal fun DoubleArray.isIdentity(): Boolean =
     this[SCALE_X] == 1.0 && this[SKEW_X] == 0.0 && this[TRANS_X] == 0.0 &&
-            this[SKEW_Y] == 0.0 && this[SCALE_Y] == 1.0 && this[TRANS_Y] == 0.0 &&
-            this[PERSP_0] == 0.0 && this[PERSP_1] == 0.0 && this[PERSP_2] == 1.0
+        this[SKEW_Y] == 0.0 && this[SCALE_Y] == 1.0 && this[TRANS_Y] == 0.0 &&
+        this[PERSP_0] == 0.0 && this[PERSP_1] == 0.0 && this[PERSP_2] == 1.0
 
 internal fun DoubleArray.isAffine(): Boolean = this[PERSP_0] == 0.0 && this[PERSP_1] == 0.0 && this[PERSP_2] == 1.0
 
@@ -1895,36 +1911,282 @@ internal fun DoubleArray.postConcat(other: DoubleArray) {
     this[PERSP_2] = v8
 }
 
+fun DoubleArray.isFinite(): Boolean {
+    val x: Double = this[0]
+    var prod: Double = x - x
+    this.forEach {
+        prod *= it
+    }
+
+    // At this point, `prod` will either be NaN or 0.
+    return prod == prod
+}
+
+enum class TypeMask(
+    val mask: Int,
+) {
+    IDENTITY_MASK(0), // !< identity SkMatrix; all bits clear
+    TRANSLATE_MASK(0x01), // !< translation SkMatrix
+    SCALE_MASK(0x02), // !< scale SkMatrix
+    AFFINE_MASK(0x04), // !< skew or rotate SkMatrix
+    PERSPECTIVE_MASK(0x08), // !< perspective SkMatrix
+}
+
+enum class Shift(
+    val shift: Int,
+) {
+    TRANSLATE_SHIFT(0),
+    SCALE_SHIFT(1),
+    AFFINE_SHIFT(2),
+    PERSPECTIVE_SHIFT(3),
+    RECT_STAYS_RECT_SHIFT(4),
+}
+
+val kORableMasks =
+    TypeMask.TRANSLATE_MASK.mask or
+        TypeMask.SCALE_MASK.mask or
+        TypeMask.AFFINE_MASK.mask or
+        TypeMask.PERSPECTIVE_MASK.mask
+
+const val SCALAR_ONE_INT = 0x3f800000L
+
+fun DoubleArray.computeTypeMask(): Int {
+    val fMat = this
+    var mask = 0
+
+    if (fMat[PERSP_0] != 0.0 || fMat[PERSP_1] != 0.0 || fMat[PERSP_2] != 1.0) {
+        // Once it is determined that that this is a perspective transform,
+        // all other flags are moot as far as optimizations are concerned.
+        return kORableMasks
+    }
+
+    if (fMat[TRANS_X] != 0.0 || fMat[TRANS_Y] != 0.0) {
+        mask = mask or TypeMask.TRANSLATE_MASK.mask
+    }
+
+    val m00 = fMat[TRANS_X].toBits()
+    var m01 = fMat[SKEW_X].toBits()
+    var m10 = fMat[SKEW_Y].toBits()
+    val m11 = fMat[TRANS_Y].toBits()
+
+    if (m01 or m10 != 0L) {
+        // The skew components may be scale-inducing, unless we are dealing
+        // with a pure rotation.  Testing for a pure rotation is expensive,
+        // so we opt for being conservative by always setting the scale bit.
+        // along with affine.
+        // By doing this, we are also ensuring that matrices have the same
+        // type masks as their inverses.
+        mask = mask or TypeMask.AFFINE_MASK.mask or TypeMask.SCALE_MASK.mask
+
+        // For rectStaysRect, in the affine case, we only need check that
+        // the primary diagonal is all zeros and that the secondary diagonal
+        // is all non-zero.
+
+        // map non-zero to 1
+        m01 = if (m01 != 0L) 1 else 0
+        m10 = if (m10 != 0L) 1 else 0
+
+        val dp0 = if (0L == (m00 or m11)) 1 else 0 // true if both are 0
+        val ds1 = if (m01 and m10 != 0L) 1 else 0 // true if both are 1
+
+        mask = mask or (dp0 and ds1) shl Shift.RECT_STAYS_RECT_SHIFT.shift
+    } else {
+        // Only test for scale explicitly if not affine, since affine sets the
+        // scale bit.
+        if ((m00 xor SCALAR_ONE_INT) or (m11 xor SCALAR_ONE_INT) != 0L) {
+            mask = mask or TypeMask.SCALE_MASK.mask
+        }
+
+        // Not affine, therefore we already know secondary diagonal is
+        // all zeros, so we just need to check that primary diagonal is
+        // all non-zero.
+
+        // map non-zero to 1
+        val m0 = if (m00 != 0L) 1 else 0
+        val m1 = if (m11 != 0L) 1 else 0
+
+        // record if the (p)rimary diagonal is all non-zero
+        mask = mask or (m0 and m1) shl Shift.RECT_STAYS_RECT_SHIFT.shift
+    }
+
+    return mask
+}
+
+internal fun dcross(
+    a: Double,
+    b: Double,
+    c: Double,
+    d: Double,
+): Double = a * b - c * d
+
+internal fun DoubleArray.determinant(isPerspective: Boolean): Double {
+    val mat = this
+    if (isPerspective) {
+        return mat[SCALE_X] *
+            dcross(
+                mat[SCALE_Y],
+                mat[PERSP_2],
+                mat[TRANS_Y],
+                mat[PERSP_1],
+            ) +
+            mat[SKEW_X] *
+            dcross(
+                mat[TRANS_Y],
+                mat[PERSP_0],
+                mat[SKEW_Y],
+                mat[PERSP_2],
+            ) +
+            mat[TRANS_X] *
+            dcross(
+                mat[SKEW_Y],
+                mat[PERSP_1],
+                mat[SCALE_Y],
+                mat[PERSP_0],
+            )
+    } else {
+        return dcross(
+            mat[SCALE_X],
+            mat[SCALE_Y],
+            mat[SKEW_X],
+            mat[SKEW_Y],
+        )
+    }
+}
+
+fun nearlyZero(
+    value: Double,
+    tolerance: Double = ZERO_TOLERANCE,
+): Boolean = value < tolerance && value > -tolerance
+
+internal fun DoubleArray.invDeterminant(isPerspective: Boolean): Double {
+    val det = determinant(isPerspective)
+
+    // Since the determinant is on the order of the cube of the matrix members,
+    // compare to the cube of the default nearly-zero constant (although an
+    // estimate of the condition number would be better if it wasn't so expensive).
+    if (nearlyZero(
+            det,
+            ZERO_TOLERANCE * ZERO_TOLERANCE * ZERO_TOLERANCE,
+        )
+    ) {
+        return 0.0
+    }
+    return 1.0 / det
+}
+
+internal fun dCrossDScale(
+    a: Double,
+    b: Double,
+    c: Double,
+    d: Double,
+    scale: Double,
+): Double = dcross(a, b, c, d) * scale
+
+internal fun DoubleArray.computeInv(
+    invDet: Double,
+    isPersp: Boolean,
+): DoubleArray {
+//    SkASSERT(src != dst);
+//    SkASSERT(src && dst);
+
+    val src = this
+    val dst = DoubleArray(THREE_BY_THREE)
+
+    if (isPersp) {
+        dst[SCALE_X] = dCrossDScale(src[SCALE_Y], src[PERSP_2], src[TRANS_Y], src[PERSP_1], invDet)
+        dst[SKEW_X] = dCrossDScale(src[TRANS_X], src[PERSP_1], src[SKEW_X], src[PERSP_2], invDet)
+        dst[TRANS_X] = dCrossDScale(src[SKEW_X], src[TRANS_Y], src[TRANS_X], src[SCALE_Y], invDet)
+
+        dst[SKEW_Y] = dCrossDScale(src[TRANS_Y], src[PERSP_0], src[SKEW_Y], src[PERSP_2], invDet)
+        dst[SCALE_Y] = dCrossDScale(src[SCALE_X], src[PERSP_2], src[TRANS_X], src[PERSP_0], invDet)
+        dst[TRANS_Y] = dCrossDScale(src[TRANS_X], src[SKEW_Y], src[SCALE_X], src[TRANS_Y], invDet)
+
+        dst[PERSP_0] = dCrossDScale(src[SKEW_Y], src[PERSP_1], src[SCALE_Y], src[PERSP_0], invDet)
+        dst[PERSP_1] = dCrossDScale(src[SKEW_X], src[PERSP_0], src[SCALE_X], src[PERSP_1], invDet)
+        dst[PERSP_2] = dCrossDScale(src[SCALE_X], src[SCALE_Y], src[SKEW_X], src[SKEW_Y], invDet)
+    } else { // not perspective
+        dst[SCALE_X] = src[SCALE_Y] * invDet
+        dst[SKEW_X] = -src[SKEW_X] * invDet
+        dst[TRANS_X] = dCrossDScale(src[SKEW_X], src[TRANS_Y], src[SCALE_Y], src[TRANS_X], invDet)
+
+        dst[SKEW_Y] = -src[SKEW_Y] * invDet
+        dst[SCALE_Y] = src[SCALE_X] * invDet
+        dst[TRANS_Y] = dCrossDScale(src[SKEW_Y], src[TRANS_X], src[SCALE_X], src[TRANS_Y], invDet)
+
+        dst[PERSP_0] = 0.0
+        dst[PERSP_1] = 0.0
+        dst[PERSP_2] = 1.0
+    }
+    return dst
+}
+
 @Suppress("MagicNumber")
 internal fun DoubleArray.invert(): DoubleArray? {
     val v = this
-    val v0 = v[SCALE_X]
-    val v1 = v[SKEW_X]
-    val v2 = v[TRANS_X]
-    val v3 = v[SKEW_Y]
-    val v4 = v[SCALE_Y]
-    val v5 = v[TRANS_Y]
-    val v6 = v[PERSP_0]
-    val v7 = v[PERSP_1]
-    val v8 = v[PERSP_2]
 
-    val det =
-        v0 * (v4 * v8 - v5 * v7) -
-                v1 * (v3 * v8 - v5 * v6) +
-                v2 * (v3 * v7 - v4 * v6)
-    if (fastAbs(det) < 1e-10) return null
-    val invDet = 1.0 / det
-    val res = DoubleArray(THREE_BY_THREE)
-    res[SCALE_X] = ((v4 * v8 - v5 * v7) * invDet)
-    res[SKEW_X] = ((v2 * v7 - v1 * v8) * invDet)
-    res[TRANS_X] = ((v1 * v5 - v2 * v4) * invDet)
-    res[SKEW_Y] = ((v5 * v6 - v3 * v8) * invDet)
-    res[SCALE_Y] = ((v0 * v8 - v2 * v6) * invDet)
-    res[TRANS_Y] = ((v2 * v3 - v0 * v5) * invDet)
-    res[PERSP_0] = ((v3 * v7 - v4 * v6) * invDet)
-    res[PERSP_1] = ((v1 * v6 - v0 * v7) * invDet)
-    res[PERSP_2] = ((v0 * v4 - v1 * v3) * invDet)
-    return res
+    val mask = computeTypeMask()
+
+    if (isIdentity()) {
+        return null
+    }
+
+    // Optimized invert for only scale and/or translation matrices.
+    if (mask and (TypeMask.SCALE_MASK.mask or TypeMask.TRANSLATE_MASK.mask).inv() == 0) {
+        if (mask and TypeMask.SCALE_MASK.mask != 0) {
+            // Scale + (optional) Translate
+            val invSX = 1.0 / v[SCALE_X]
+            val invSY = 1.0 / v[SCALE_Y]
+            // Denormalized (non-zero) scale factors will overflow when inverted, in which case
+            // the inverse matrix would not be finite, so return false.
+            if (!doubleArrayOf(invSX, invSY).isFinite()) {
+                return null
+            }
+            val invTX = -v[SCALE_X] * invSX
+            val invTY = -v[SCALE_Y] * invSY
+            // Make sure inverse translation didn't overflow/underflow after dividing by scale.
+            // Also catches cases where the original matrix's translation values are not finite.
+            if (!doubleArrayOf(invTX, invTY).isFinite()) {
+                return null
+            }
+
+            val dst = DoubleArray(THREE_BY_THREE)
+
+            dst[SCALE_X] = 0.0
+            dst[SKEW_X] = 0.0
+            dst[PERSP_0] = 0.0
+            dst[PERSP_1] = 0.0
+
+            dst[SCALE_X] = invSX
+            dst[SCALE_Y] = invSY
+            dst[PERSP_2] = 1.0
+            dst[TRANS_X] = invTX
+            dst[TRANS_Y] = invTY
+
+            return dst
+        }
+
+        // Translate-only
+        if (!doubleArrayOf(v[TRANS_X], v[TRANS_Y]).isFinite()) {
+            // Translation components aren't finite, so inverse isn't possible
+            return null
+        }
+        val dst = DoubleArray(THREE_BY_THREE)
+        dst.setTranslate(-v[TRANS_X], -v[TRANS_Y])
+        return dst
+    }
+
+    val isPersp = mask and TypeMask.PERSPECTIVE_MASK.mask != 0
+    val invDet = v.invDeterminant(isPersp)
+
+    if (invDet == 0.0) { // underflow
+        return null
+    }
+
+    val inv = v.computeInv(invDet, isPersp)
+    if (!inv.isFinite()) {
+        return null
+    }
+    return inv
 }
 
 internal fun DoubleArray.mapX(
@@ -2120,7 +2382,13 @@ internal fun DoubleArray.mapVectors(
     }
 }
 
-internal fun DoubleArray.setPolyToPoly(src: FloatArray, srcIndex: Int, dst: FloatArray, dstIndex: Int, pointCount: Int): Boolean {
+internal fun DoubleArray.setPolyToPoly(
+    src: FloatArray,
+    srcIndex: Int,
+    dst: FloatArray,
+    dstIndex: Int,
+    pointCount: Int,
+): Boolean {
     if (pointCount !in 0..4) {
         throw IllegalArgumentException("pointCount must be between 0 and 4")
     }
@@ -2145,7 +2413,11 @@ internal fun DoubleArray.setPolyToPoly(src: FloatArray, srcIndex: Int, dst: Floa
     return false
 }
 
-private fun polyToPoly(src: DoubleArray, dst: DoubleArray, pointCount: Int): DoubleArray? {
+private fun polyToPoly(
+    src: DoubleArray,
+    dst: DoubleArray,
+    pointCount: Int,
+): DoubleArray? {
     val tempMap = DoubleArray(THREE_BY_THREE)
     if (!polyToPolyProc(src, tempMap)) {
         return null
@@ -2158,8 +2430,10 @@ private fun polyToPoly(src: DoubleArray, dst: DoubleArray, pointCount: Int): Dou
     return tempMap
 }
 
-private fun polyToPolyProc(src: DoubleArray, dst: DoubleArray): Boolean {
-
+private fun polyToPolyProc(
+    src: DoubleArray,
+    dst: DoubleArray,
+): Boolean {
     // we have an array of doubles,
     // 4 doubles -> 2  points, 6 doubles -> 3 points, 8 doubles -> 4 points
     return when (src.size) {
@@ -2170,48 +2444,57 @@ private fun polyToPolyProc(src: DoubleArray, dst: DoubleArray): Boolean {
     }
 }
 
-private fun poly2Proc(src: DoubleArray, dst: DoubleArray): Boolean {
-    dst[SCALE_X] = src[1*2+1] - src[0*2+1]
-    dst[SKEW_Y]  = src[0*2] - src[1*2]
+private fun poly2Proc(
+    src: DoubleArray,
+    dst: DoubleArray,
+): Boolean {
+    dst[SCALE_X] = src[1 * 2 + 1] - src[0 * 2 + 1]
+    dst[SKEW_Y] = src[0 * 2] - src[1 * 2]
     dst[PERSP_0] = 0.0
 
-    dst[SKEW_X]  = src[1*2] - src[0*2]
-    dst[SCALE_Y] = src[1*2+1] - src[0*2+1]
+    dst[SKEW_X] = src[1 * 2] - src[0 * 2]
+    dst[SCALE_Y] = src[1 * 2 + 1] - src[0 * 2 + 1]
     dst[PERSP_1] = 0.0
 
     dst[TRANS_X] = src[0]
-    dst[TRANS_Y] = src[0+1]
+    dst[TRANS_Y] = src[0 + 1]
     dst[PERSP_2] = 1.0
     return true
-
 }
-private fun poly3Proc(src: DoubleArray, dst: DoubleArray): Boolean {
-    dst[SCALE_X] = src[2*2] - src[0*2]
-    dst[SKEW_Y]  = src[2*2+1] - src[0*2+1]
+
+private fun poly3Proc(
+    src: DoubleArray,
+    dst: DoubleArray,
+): Boolean {
+    dst[SCALE_X] = src[2 * 2] - src[0 * 2]
+    dst[SKEW_Y] = src[2 * 2 + 1] - src[0 * 2 + 1]
     dst[PERSP_0] = 0.0
 
-    dst[SKEW_X]  = src[1*2] - src[0*2]
-    dst[SCALE_Y] =src[1*2+1] - src[0*2+1]
+    dst[SKEW_X] = src[1 * 2] - src[0 * 2]
+    dst[SCALE_Y] = src[1 * 2 + 1] - src[0 * 2 + 1]
     dst[PERSP_1] = 0.0
 
     dst[TRANS_X] = src[0]
-    dst[TRANS_Y] = src[0+1]
+    dst[TRANS_Y] = src[0 + 1]
     dst[PERSP_2] = 1.0
     return true
-
 }
-private fun poly4Proc(src: DoubleArray, dst: DoubleArray): Boolean {
-    var   a1: Double
-    var  a2: Double
 
-    val x0 = src[2*2]- src[0*2]
-    val y0 = src[2*2+1] - src[0*2+1]
-    val x1 = src[2*2] - src[1*2]
-    val y1 = src[2*2+1] - src[1*2+1]
-    val x2 = src[2*2]- src[3*2]
-    val y2 = src[2*2+1] - src[3*2+1]
+private fun poly4Proc(
+    src: DoubleArray,
+    dst: DoubleArray,
+): Boolean {
+    var a1: Double
+    var a2: Double
 
-    /* check if abs(x2) > abs(y2) */
+    val x0 = src[2 * 2] - src[0 * 2]
+    val y0 = src[2 * 2 + 1] - src[0 * 2 + 1]
+    val x1 = src[2 * 2] - src[1 * 2]
+    val y1 = src[2 * 2 + 1] - src[1 * 2 + 1]
+    val x2 = src[2 * 2] - src[3 * 2]
+    val y2 = src[2 * 2 + 1] - src[3 * 2 + 1]
+
+    // check if abs(x2) > abs(y2)
     if (fastAbs(x2) > fastAbs(y2)) {
         val denom = ieeeDivide(x1 * y2, x2) - y1
         if (checkForZero(denom)) {
@@ -2226,8 +2509,8 @@ private fun poly4Proc(src: DoubleArray, dst: DoubleArray): Boolean {
         a1 = (x0 - x1 - ieeeDivide((y0 - y1) * x2, y2)) / denom
     }
 
-    /* check if abs(x1) > abs(y1) */
-    if ( fastAbs(x1) > fastAbs(y1)) {
+    // check if abs(x1) > abs(y1)
+    if (fastAbs(x1) > fastAbs(y1)) {
         val denom = y2 - ieeeDivide(x2 * y1, x1)
         if (checkForZero(denom)) {
             return false
@@ -2241,23 +2524,23 @@ private fun poly4Proc(src: DoubleArray, dst: DoubleArray): Boolean {
         a2 = (ieeeDivide((y0 - y2) * x1, y1) - x0 + x2) / denom
     }
 
-
-    dst[SCALE_X] = a2 * src[3*2] + src[3*2] - src[0*2]
-    dst[SKEW_Y]  = a2 * src[3*2+1] + src[3*2+1] - src[0*2+1]
+    dst[SCALE_X] = a2 * src[3 * 2] + src[3 * 2] - src[0 * 2]
+    dst[SKEW_Y] = a2 * src[3 * 2 + 1] + src[3 * 2 + 1] - src[0 * 2 + 1]
     dst[PERSP_0] = a2
 
-    dst[SKEW_X]  = a1 * src[1*2] + src[1*2] - src[0*2]
-    dst[SCALE_Y] =a1 * src[1*2+1] + src[1*2+1] - src[0*2+1]
+    dst[SKEW_X] = a1 * src[1 * 2] + src[1 * 2] - src[0 * 2]
+    dst[SCALE_Y] = a1 * src[1 * 2 + 1] + src[1 * 2 + 1] - src[0 * 2 + 1]
     dst[PERSP_1] = a1
 
-    dst[TRANS_X] = src[0*2]
-    dst[TRANS_Y] = src[0*2+1]
+    dst[TRANS_X] = src[0 * 2]
+    dst[TRANS_Y] = src[0 * 2 + 1]
     dst[PERSP_2] = 1.0
     return true
-
 }
 
-fun ieeeDivide(a: Double, b: Double): Double = a / b
+fun ieeeDivide(
+    a: Double,
+    b: Double,
+): Double = a / b
 
 fun checkForZero(a: Double): Boolean = a * a == 0.0
-

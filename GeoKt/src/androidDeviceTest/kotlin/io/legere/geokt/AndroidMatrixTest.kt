@@ -1074,6 +1074,20 @@ class AndroidMatrixTest {
     }
 
     @Test
+    fun setPolyToPoly_from_scanner() {
+        val src = floatArrayOf(532.0f, 981.0f, 1602.0f, 918.0f, 1847.0f, 2539.0f, 675.0f, 2717.0f)
+        val dst = floatArrayOf(0.0f, 0.0f, 1315.0f, 0.0f, 1315.0f, 1799.0f, 0.0f, 1799.0f)
+
+        val mutableResult = mutableMatrix.setPolyToPoly(src, 0, dst, 0, 3)
+        val platformResult = platformMatrix.setPolyToPoly(src, 0, dst, 0, 3)
+        val immutableResult = pdfMatrix.setPolyToPoly(src, 0, dst, 0, 3)
+
+        assertThat(mutableResult).isEqualTo(platformResult)
+        assertMatrixValuesEqual(mutableMatrix, platformMatrix, delta = 0.001f)
+        assertMatrixValuesEqual(immutableResult!!, platformMatrix, delta = 0.001f)
+    }
+
+    @Test
     fun setPolyToPoly_3Points_IsAffine() {
         val src = floatArrayOf(0f, 0f, 10f, 0f, 0f, 10f)
         val dst = floatArrayOf(10f, 10f, 30f, 10f, 10f, 30f)
