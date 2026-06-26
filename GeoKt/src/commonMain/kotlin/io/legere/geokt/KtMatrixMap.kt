@@ -76,6 +76,58 @@ internal fun DoubleArray.mapRect(
     )
 }
 
+internal fun DoubleArray.mapXDouble(
+    x: Double,
+    y: Double,
+): Double {
+    val w = this[PERSP_0] * x + this[PERSP_1] * y + this[PERSP_2]
+    return (this[SCALE_X] * x + this[SKEW_X] * y + this[TRANS_X]) / w
+}
+
+internal fun DoubleArray.mapYDouble(
+    x: Double,
+    y: Double,
+): Double {
+    val w = this[PERSP_0] * x + this[PERSP_1] * y + this[PERSP_2]
+    return (this[SKEW_Y] * x + this[SCALE_Y] * y + this[TRANS_Y]) / w
+}
+
+// Double-native rect mapping — no Float hop (the Float mapRect above casts each corner to Float).
+internal fun DoubleArray.mapRect(rect: KtRectD) {
+    val x1 = mapXDouble(rect.left, rect.top)
+    val y1 = mapYDouble(rect.left, rect.top)
+    val x2 = mapXDouble(rect.right, rect.top)
+    val y2 = mapYDouble(rect.right, rect.top)
+    val x3 = mapXDouble(rect.right, rect.bottom)
+    val y3 = mapYDouble(rect.right, rect.bottom)
+    val x4 = mapXDouble(rect.left, rect.bottom)
+    val y4 = mapYDouble(rect.left, rect.bottom)
+    rect.left = min(x1, min(x2, min(x3, x4)))
+    rect.top = min(y1, min(y2, min(y3, y4)))
+    rect.right = max(x1, max(x2, max(x3, x4)))
+    rect.bottom = max(y1, max(y2, max(y3, y4)))
+}
+
+internal fun DoubleArray.mapRect(
+    dst: KtRectD,
+    src: DoubleRectValues,
+) {
+    val x1 = mapXDouble(src.left, src.top)
+    val y1 = mapYDouble(src.left, src.top)
+    val x2 = mapXDouble(src.right, src.top)
+    val y2 = mapYDouble(src.right, src.top)
+    val x3 = mapXDouble(src.right, src.bottom)
+    val y3 = mapYDouble(src.right, src.bottom)
+    val x4 = mapXDouble(src.left, src.bottom)
+    val y4 = mapYDouble(src.left, src.bottom)
+    dst.set(
+        l = min(x1, min(x2, min(x3, x4))),
+        t = min(y1, min(y2, min(y3, y4))),
+        r = max(x1, max(x2, max(x3, x4))),
+        b = max(y1, max(y2, max(y3, y4))),
+    )
+}
+
 @Suppress("MagicNumber")
 internal fun DoubleArray.mapRadius(radius: Float): Float = mapRadius(radius.toDouble()).toFloat()
 

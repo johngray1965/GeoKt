@@ -31,6 +31,11 @@ internal fun DoubleArray.invert(): DoubleArray? {
     }
 
     // Optimized invert for only scale and/or translation matrices.
+    // NOTE: this fast path is currently DEAD — the RECT_STAYS_RECT bit is set for every real
+    // scale/translate matrix, so this condition is never true and `invert` always uses the (correct)
+    // general path below. It is INTENTIONALLY left disabled: the body has its own bug (invTX/invTY
+    // compute -SCALE_X*invSX = -1 instead of -TRANS_X*invSX, so the translate inverse is wrong).
+    // To enable, fix invTX/invTY and gate on `mask and (AFFINE_MASK or PERSPECTIVE_MASK) == 0`.
     if (mask and (TypeMask.SCALE_MASK.mask or TypeMask.TRANSLATE_MASK.mask).inv() == 0) {
         if (mask and TypeMask.SCALE_MASK.mask != 0) {
             // Scale + (optional) Translate

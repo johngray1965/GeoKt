@@ -52,6 +52,14 @@ interface MatrixValues {
         src: FloatRectValues,
     ) = values.mapRect(dst, src)
 
+    // Double-native rect mapping — keeps the central model in Double (no Float corner hop).
+    fun mapRect(rect: KtRectD) = values.mapRect(rect)
+
+    fun mapRect(
+        dst: KtRectD,
+        src: DoubleRectValues,
+    ) = values.mapRect(dst, src)
+
     fun mapRadius(radius: Float): Float = values.mapRadius(radius)
 
     fun mapRadius(radius: Double): Double = values.mapRadius(radius)

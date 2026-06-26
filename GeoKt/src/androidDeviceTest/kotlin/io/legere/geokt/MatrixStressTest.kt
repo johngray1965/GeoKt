@@ -229,4 +229,97 @@ class MatrixStressTest {
         }
     }
 
+    /** One random op, same distribution as [operations]. */
+    private fun randomOp(rand: Random): Op {
+        val type = OpType.entries[rand.nextInt(OpType.entries.size)]
+        val p1: Float
+        val p2: Float
+        when (type) {
+            OpType.PRE_TRANSLATE, OpType.POST_TRANSLATE -> {
+                p1 = (rand.nextFloat() - 0.5f) * 10f
+                p2 = (rand.nextFloat() - 0.5f) * 10f
+            }
+            OpType.PRE_SCALE, OpType.POST_SCALE -> {
+                p1 = 1.0f + (rand.nextFloat() - 0.5f) * 0.2f
+                p2 = 1.0f + (rand.nextFloat() - 0.5f) * 0.2f
+            }
+            OpType.PRE_ROTATE, OpType.POST_ROTATE -> {
+                p1 = if (rand.nextBoolean()) listOf(0f, 90f, 180f, 270f).random(rand) else (rand.nextFloat() - 0.5f) * 90f
+                p2 = 0f
+            }
+            else -> {
+                p1 = (rand.nextFloat() - 0.5f) * 0.1f
+                p2 = (rand.nextFloat() - 0.5f) * 0.1f
+            }
+        }
+        return Op(type, p1, p2)
+    }
+
+    /** A random KtMatrix/AndroidMatrix pair built from the same [opCount] ops. */
+    private fun randomPair(rand: Random, opCount: Int): Pair<KtMatrix, AndroidMatrix> {
+        val kt = KtMatrix()
+        val android = AndroidMatrix()
+        repeat(opCount) {
+            val op = randomOp(rand)
+            runWithMutablePdfMatrix(kt, op)
+            runWithAndroidMatrix(android, op)
+        }
+        return kt to android
+    }
+
+    @Test
+    fun invertMatchesAndroidMatrix() {
+        val rand = Random(randomSeed)
+        var comparedInvertible = 0
+        repeat(20_000) {
+            val (kt, android) = randomPair(rand, opCount = 6)
+            // KtMatrix.invert deliberately returns false for identity (android returns true); skip it.
+            if (kt.isIdentity()) return@repeat
+
+            val ktInv = KtMatrix()
+            val ktOk = kt.invert(ktInv)
+            val aInv = AndroidMatrix()
+            val aOk = android.invert(aInv)
+
+            assertWithMessage("invertibility mismatch for ${kt.values.toList()}").that(ktOk).isEqualTo(aOk)
+            if (ktOk && aOk) {
+                val ktVals = ktInv.values.map { it.toFloat() }.toFloatArray()
+                val aVals = FloatArray(9)
+                aInv.getValues(aVals)
+                assertWithMessage("inverse mismatch: kt=${ktVals.contentToString()} android=${aVals.contentToString()}")
+                    .that(ktVals).usingTolerance(0.1).containsExactly(aVals)
+                comparedInvertible++
+            }
+        }
+        assertWithMessage("expected some invertible matrices to be compared").that(comparedInvertible).isGreaterThan(0)
+    }
+
+    @Test
+    fun setPolyToPolyMatchesAndroidMatrix() {
+        val rand = Random(randomSeed)
+        var comparedOk = 0
+        repeat(20_000) {
+            val pointCount = rand.nextInt(0, 5) // 0..4
+            // Points in a modest range; both engines see the exact same floats.
+            val src = FloatArray(pointCount * 2) { (rand.nextFloat() - 0.5f) * 200f }
+            val dst = FloatArray(pointCount * 2) { (rand.nextFloat() - 0.5f) * 200f }
+
+            val kt = KtMatrix()
+            val ktOk = kt.setPolyToPoly(src, 0, dst, 0, pointCount)
+            val android = AndroidMatrix()
+            val aOk = android.setPolyToPoly(src, 0, dst, 0, pointCount)
+
+            assertWithMessage("setPolyToPoly success mismatch (n=$pointCount, src=${src.contentToString()}, dst=${dst.contentToString()})")
+                .that(ktOk).isEqualTo(aOk)
+            if (ktOk && aOk) {
+                val ktVals = kt.values.map { it.toFloat() }.toFloatArray()
+                val aVals = FloatArray(9)
+                android.getValues(aVals)
+                assertWithMessage("poly matrix mismatch (n=$pointCount): kt=${ktVals.contentToString()} android=${aVals.contentToString()}")
+                    .that(ktVals).usingTolerance(0.1).containsExactly(aVals)
+                comparedOk++
+            }
+        }
+        assertWithMessage("expected some successful setPolyToPoly cases").that(comparedOk).isGreaterThan(0)
+    }
 }

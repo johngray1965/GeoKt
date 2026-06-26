@@ -47,7 +47,9 @@ val kORableMasks =
         TypeMask.AFFINE_MASK.mask or
         TypeMask.PERSPECTIVE_MASK.mask
 
-const val SCALAR_ONE_INT = 0x3f800000L
+// Bit pattern of the Double 1.0. (Was 0x3f800000L — the 32-bit *Float* 1.0 — which never matches a
+// Double.toBits(), so the scale-vs-1.0 check below could never fire.)
+const val SCALAR_ONE_INT = 0x3FF0000000000000L
 
 fun DoubleArray.computeTypeMask(): Int {
     val fMat = this
@@ -61,10 +63,12 @@ fun DoubleArray.computeTypeMask(): Int {
         mask = mask or TypeMask.TRANSLATE_MASK.mask
     }
 
-    val m00 = fMat[TRANS_X].toBits()
+    // The 2x2 linear block: scale on the diagonal, skew off it. (Was reading TRANS_X/TRANS_Y for the
+    // diagonal — the translation cells, not the scale cells.)
+    val m00 = fMat[SCALE_X].toBits()
     var m01 = fMat[SKEW_X].toBits()
     var m10 = fMat[SKEW_Y].toBits()
-    val m11 = fMat[TRANS_Y].toBits()
+    val m11 = fMat[SCALE_Y].toBits()
 
     if (m01 or m10 != 0L) {
         // The skew components may be scale-inducing, unless we are dealing
@@ -86,7 +90,9 @@ fun DoubleArray.computeTypeMask(): Int {
         val dp0 = if (0L == (m00 or m11)) 1 else 0 // true if both are 0
         val ds1 = if (m01 and m10 != 0L) 1 else 0 // true if both are 1
 
-        mask = mask or (dp0 and ds1) shl Shift.RECT_STAYS_RECT_SHIFT.shift
+        // Parenthesize the shift: Kotlin's infix `or`/`shl` are left-associative, so without these
+        // parens this was `(mask or x) shl SHIFT` — shifting the WHOLE mask instead of the one bit.
+        mask = mask or ((dp0 and ds1) shl Shift.RECT_STAYS_RECT_SHIFT.shift)
     } else {
         // Only test for scale explicitly if not affine, since affine sets the
         // scale bit.
@@ -103,7 +109,7 @@ fun DoubleArray.computeTypeMask(): Int {
         val m1 = if (m11 != 0L) 1 else 0
 
         // record if the (p)rimary diagonal is all non-zero
-        mask = mask or (m0 and m1) shl Shift.RECT_STAYS_RECT_SHIFT.shift
+        mask = mask or ((m0 and m1) shl Shift.RECT_STAYS_RECT_SHIFT.shift)
     }
 
     return mask

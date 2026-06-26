@@ -274,7 +274,10 @@ class KtImmutableRectFTest {
     @Test
     fun intersect2() {
         val rect1 = KtImmutableRectF(0f, 0f, 10f, 10f)
-        val expected = KtImmutableRectF(5f, 5f, 15f, 15f)
+        // The real intersection of (0,0,10,10) and (5,5,15,15) is (5,5,10,10). (Previously this
+        // asserted (5,5,15,15) — the params verbatim — because the 4-arg intersect had a bug where
+        // the params shadowed the fields, making max(left,left)/min(right,right) a no-op.)
+        val expected = KtImmutableRectF(5f, 5f, 10f, 10f)
         val result = rect1.intersect(5f, 5f, 15f, 15f)
         assertThat(result).isEqualTo(expected)
 

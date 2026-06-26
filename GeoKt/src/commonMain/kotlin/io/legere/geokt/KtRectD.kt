@@ -30,61 +30,64 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Interface defining common operations for float rectangles.
+ * Interface defining common operations for double rectangles.
  * Shared between Immutable and Mutable versions to avoid code duplication.
+ *
+ * The double sibling of [FloatRectValues]: use it for the central coordinate model so values
+ * aren't lossily widened from/narrowed to Float; convert to Float only at a render/layout boundary.
  */
-interface FloatRectValues {
-    val left: Float
-    val top: Float
-    val right: Float
-    val bottom: Float
+interface DoubleRectValues {
+    val left: Double
+    val top: Double
+    val right: Double
+    val bottom: Double
 }
 
-val FloatRectValues.width get() = right - left
-val FloatRectValues.height get() = bottom - top
-val FloatRectValues.centerX get() = (left + right) / 2f
-val FloatRectValues.centerY get() = (top + bottom) / 2f
-val FloatRectValues.isEmpty get() = left >= right || top >= bottom
+val DoubleRectValues.width get() = right - left
+val DoubleRectValues.height get() = bottom - top
+val DoubleRectValues.centerX get() = (left + right) / 2.0
+val DoubleRectValues.centerY get() = (top + bottom) / 2.0
+val DoubleRectValues.isEmpty get() = left >= right || top >= bottom
 
-abstract class BaseRectF :
-    FloatRectValues,
-    RectInterface<Float, KtImmutableRectF, FloatRectValues> {
-    override fun height(): Float = height
+abstract class BaseRectD :
+    DoubleRectValues,
+    RectInterface<Double, KtImmutableRectD, DoubleRectValues> {
+    override fun height(): Double = height
 
-    override fun width(): Float = width
+    override fun width(): Double = width
 
-    override fun centerX(): Float = centerX
+    override fun centerX(): Double = centerX
 
-    override fun centerY(): Float = centerY
+    override fun centerY(): Double = centerY
 
-    override fun intersects(other: FloatRectValues): Boolean {
+    override fun intersects(other: DoubleRectValues): Boolean {
         if (this.isEmpty || other.isEmpty) return false
         return !(right < other.left || left > other.right || bottom < other.top || top > other.bottom)
     }
 
     override fun intersects(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
     ): Boolean {
         if (this.isEmpty) return false
         return !(this.right < left || this.left > right || this.bottom < top || this.top > bottom)
     }
 
     override fun contains(
-        x: Float,
-        y: Float,
+        x: Double,
+        y: Double,
     ): Boolean {
         if (this.isEmpty) return false
         return (x in left..<right && y >= top && y < bottom)
     }
 
     override fun contains(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
     ): Boolean {
         if (this.isEmpty) return false
         return this.left <= left &&
@@ -93,7 +96,7 @@ abstract class BaseRectF :
                 this.bottom >= bottom
     }
 
-    override fun contains(rect: FloatRectValues): Boolean {
+    override fun contains(rect: DoubleRectValues): Boolean {
         if (this.isEmpty) return false
         return !rect.isEmpty &&
                 left <= rect.left &&
@@ -128,23 +131,34 @@ abstract class BaseRectF :
     override fun isEmpty(): Boolean = isEmpty
 }
 
-data class KtImmutableRectF(
-    override val left: Float,
-    override val top: Float,
-    override val right: Float,
-    override val bottom: Float,
-) : BaseRectF(),
-    ImmutableRectInterface<Float, KtImmutableRectF, FloatRectValues> {
-    constructor() : this(0f, 0f, 0f, 0f)
-    constructor(rectF: FloatRectValues) : this(rectF.left, rectF.top, rectF.right, rectF.bottom)
-    constructor(rectF: IntRectValues) : this(rectF.left.toFloat(), rectF.top.toFloat(), rectF.right.toFloat(), rectF.bottom.toFloat())
+data class KtImmutableRectD(
+    override val left: Double,
+    override val top: Double,
+    override val right: Double,
+    override val bottom: Double,
+) : BaseRectD(),
+    ImmutableRectInterface<Double, KtImmutableRectD, DoubleRectValues> {
+    constructor() : this(0.0, 0.0, 0.0, 0.0)
+    constructor(rect: DoubleRectValues) : this(rect.left, rect.top, rect.right, rect.bottom)
+    constructor(rect: FloatRectValues) : this(
+        rect.left.toDouble(),
+        rect.top.toDouble(),
+        rect.right.toDouble(),
+        rect.bottom.toDouble(),
+    )
+    constructor(rect: IntRectValues) : this(
+        rect.left.toDouble(),
+        rect.top.toDouble(),
+        rect.right.toDouble(),
+        rect.bottom.toDouble(),
+    )
 
     override fun inset(
-        dx: Float,
-        dy: Float,
-    ): KtImmutableRectF {
-        if (dx == 0f && dy == 0f) return this
-        return KtImmutableRectF(
+        dx: Double,
+        dy: Double,
+    ): KtImmutableRectD {
+        if (dx == 0.0 && dy == 0.0) return this
+        return KtImmutableRectD(
             left = left + dx,
             top = top + dy,
             right = right - dx,
@@ -153,21 +167,21 @@ data class KtImmutableRectF(
     }
 
     override fun inset(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
-    ): KtImmutableRectF =
-        KtImmutableRectF(
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
+    ): KtImmutableRectD =
+        KtImmutableRectD(
             left = this.left + left,
             top = this.top + top,
             right = this.right - right,
             bottom = this.bottom - bottom,
         )
 
-    override fun intersect(other: FloatRectValues): KtImmutableRectF {
+    override fun intersect(other: DoubleRectValues): KtImmutableRectD {
         if (this.isEmpty || other.isEmpty) return this
-        return KtImmutableRectF(
+        return KtImmutableRectD(
             left = max(left, other.left),
             top = max(top, other.top),
             right = min(right, other.right),
@@ -176,13 +190,13 @@ data class KtImmutableRectF(
     }
 
     override fun intersect(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
-    ): KtImmutableRectF {
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
+    ): KtImmutableRectD {
         if (this.isEmpty) return this
-        return KtImmutableRectF(
+        return KtImmutableRectD(
             left = max(this.left, left),
             top = max(this.top, top),
             right = min(this.right, right),
@@ -190,26 +204,20 @@ data class KtImmutableRectF(
         )
     }
 
-    fun setEmpty(): KtImmutableRectF =
-        KtImmutableRectF(
-            left = 0f,
-            top = 0f,
-            right = 0f,
-            bottom = 0f,
-        )
+    fun setEmpty(): KtImmutableRectD = EMPTY
 
-    override fun union(other: FloatRectValues): KtImmutableRectF =
+    override fun union(other: DoubleRectValues): KtImmutableRectD =
         when {
             other.isEmpty -> {
                 this
             }
 
             this.isEmpty -> {
-                other as? KtImmutableRectF ?: KtImmutableRectF(other.left, other.top, other.right, other.bottom)
+                other as? KtImmutableRectD ?: KtImmutableRectD(other.left, other.top, other.right, other.bottom)
             }
 
             else -> {
-                KtImmutableRectF(
+                KtImmutableRectD(
                     left = min(left, other.left),
                     top = min(top, other.top),
                     right = max(right, other.right),
@@ -219,18 +227,18 @@ data class KtImmutableRectF(
         }
 
     override fun union(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
-    ): KtImmutableRectF =
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
+    ): KtImmutableRectD =
         when {
             this.isEmpty -> {
-                KtImmutableRectF(left, top, right, bottom)
+                KtImmutableRectD(left, top, right, bottom)
             }
 
             else -> {
-                KtImmutableRectF(
+                KtImmutableRectD(
                     left = min(left, this.left),
                     top = min(top, this.top),
                     right = max(right, this.right),
@@ -240,16 +248,16 @@ data class KtImmutableRectF(
         }
 
     override fun union(
-        x: Float,
-        y: Float,
-    ): KtImmutableRectF =
+        x: Double,
+        y: Double,
+    ): KtImmutableRectD =
         when {
             this.isEmpty -> {
-                KtImmutableRectF()
+                KtImmutableRectD()
             }
 
             else -> {
-                KtImmutableRectF(
+                KtImmutableRectD(
                     left = min(x, this.left),
                     top = min(y, this.top),
                     right = max(x, this.right),
@@ -267,10 +275,10 @@ data class KtImmutableRectF(
         )
 
     override fun offset(
-        dx: Float,
-        dy: Float,
-    ): KtImmutableRectF =
-        KtImmutableRectF(
+        dx: Double,
+        dy: Double,
+    ): KtImmutableRectD =
+        KtImmutableRectD(
             left + dx,
             top + dy,
             right + dx,
@@ -278,12 +286,12 @@ data class KtImmutableRectF(
         )
 
     override fun offsetTo(
-        newLeft: Float,
-        newTop: Float,
-    ): KtImmutableRectF {
+        newLeft: Double,
+        newTop: Double,
+    ): KtImmutableRectD {
         val width = right - left
         val height = bottom - top
-        return KtImmutableRectF(
+        return KtImmutableRectD(
             newLeft,
             newTop,
             newLeft + width,
@@ -291,44 +299,55 @@ data class KtImmutableRectF(
         )
     }
 
-    override fun sort(): KtImmutableRectF =
-        KtImmutableRectF(
+    override fun sort(): KtImmutableRectD =
+        KtImmutableRectD(
             left = min(left, right),
             top = min(top, bottom),
             right = max(left, right),
             bottom = max(top, bottom),
         )
 
-    fun toMutable() = KtRectF(left, top, right, bottom)
+    fun toMutable() = KtRectD(left, top, right, bottom)
 
-    fun toFloatArray(): FloatArray = floatArrayOf(left, top, right, bottom)
+    /** Narrow to a Float rect — for a render/layout boundary only (the central model stays double). */
+    fun toFloat() = KtImmutableRectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+
+    fun toDoubleArray(): DoubleArray = doubleArrayOf(left, top, right, bottom)
+
+    fun toFloatArray(): FloatArray = floatArrayOf(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
 
     companion object {
-        val EMPTY = KtImmutableRectF(0f, 0f, 0f, 0f)
+        val EMPTY = KtImmutableRectD(0.0, 0.0, 0.0, 0.0)
     }
 }
 
-data class KtRectF(
-    override var left: Float = 0f,
-    override var top: Float = 0f,
-    override var right: Float = 0f,
-    override var bottom: Float = 0f,
-) : BaseRectF(),
-    MutableRectInterface<Float, KtImmutableRectF, FloatRectValues> {
-    constructor() : this(0f, 0f, 0f, 0f)
-    constructor(rectF: FloatRectValues) : this(rectF.left, rectF.top, rectF.right, rectF.bottom)
-    constructor(rectF: IntRectValues) : this(
-        rectF.left.toFloat(),
-        rectF.top.toFloat(),
-        rectF.right.toFloat(),
-        rectF.bottom.toFloat(),
+data class KtRectD(
+    override var left: Double = 0.0,
+    override var top: Double = 0.0,
+    override var right: Double = 0.0,
+    override var bottom: Double = 0.0,
+) : BaseRectD(),
+    MutableRectInterface<Double, KtImmutableRectD, DoubleRectValues> {
+    constructor() : this(0.0, 0.0, 0.0, 0.0)
+    constructor(rect: DoubleRectValues) : this(rect.left, rect.top, rect.right, rect.bottom)
+    constructor(rect: FloatRectValues) : this(
+        rect.left.toDouble(),
+        rect.top.toDouble(),
+        rect.right.toDouble(),
+        rect.bottom.toDouble(),
+    )
+    constructor(rect: IntRectValues) : this(
+        rect.left.toDouble(),
+        rect.top.toDouble(),
+        rect.right.toDouble(),
+        rect.bottom.toDouble(),
     )
 
     fun set(
-        l: Float,
-        t: Float,
-        r: Float,
-        b: Float,
+        l: Double,
+        t: Double,
+        r: Double,
+        b: Double,
     ) {
         left = l
         top = t
@@ -336,26 +355,30 @@ data class KtRectF(
         bottom = b
     }
 
-    fun set(src: FloatRectValues) {
+    fun set(src: DoubleRectValues) {
         set(src.left, src.top, src.right, src.bottom)
     }
 
+    fun set(src: FloatRectValues) {
+        set(src.left.toDouble(), src.top.toDouble(), src.right.toDouble(), src.bottom.toDouble())
+    }
+
     fun set(src: IntRectValues) {
-        set(src.left.toFloat(), src.top.toFloat(), src.right.toFloat(), src.bottom.toFloat())
+        set(src.left.toDouble(), src.top.toDouble(), src.right.toDouble(), src.bottom.toDouble())
     }
 
     fun setEmpty() {
-        left = 0f
-        top = 0f
-        right = 0f
-        bottom = 0f
+        left = 0.0
+        top = 0.0
+        right = 0.0
+        bottom = 0.0
     }
 
     override fun inset(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
     ) {
         this.left += left
         this.top += top
@@ -364,17 +387,17 @@ data class KtRectF(
     }
 
     override fun inset(
-        dx: Float,
-        dy: Float,
+        dx: Double,
+        dy: Double,
     ) {
-        if (dx == 0f && dy == 0f) return
+        if (dx == 0.0 && dy == 0.0) return
         left += dx
         top += dy
         right -= dx
         bottom -= dy
     }
 
-    override fun intersect(other: FloatRectValues) {
+    override fun intersect(other: DoubleRectValues) {
         if (this.isEmpty || other.isEmpty) return
         left = max(left, other.left)
         top = max(top, other.top)
@@ -383,10 +406,10 @@ data class KtRectF(
     }
 
     override fun intersect(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
     ) {
         if (this.isEmpty) return
         this.left = max(this.left, left)
@@ -395,9 +418,8 @@ data class KtRectF(
         this.bottom = min(this.bottom, bottom)
     }
 
-    override fun union(other: FloatRectValues) {
-        when
-        {
+    override fun union(other: DoubleRectValues) {
+        when {
             other.isEmpty -> {
             }
 
@@ -418,10 +440,10 @@ data class KtRectF(
     }
 
     override fun union(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
+        left: Double,
+        top: Double,
+        right: Double,
+        bottom: Double,
     ) {
         when {
             this.isEmpty -> {
@@ -441,8 +463,8 @@ data class KtRectF(
     }
 
     override fun union(
-        x: Float,
-        y: Float,
+        x: Double,
+        y: Double,
     ) {
         when {
             this.isEmpty -> {
@@ -466,14 +488,14 @@ data class KtRectF(
             bottom = ceil(this.bottom).toInt(),
         )
 
-    override fun intersects(other: FloatRectValues): Boolean {
+    override fun intersects(other: DoubleRectValues): Boolean {
         if (this.isEmpty || other.isEmpty) return false
         return !(right < other.left || left > other.right || bottom < other.top || top > other.bottom)
     }
 
     override fun offset(
-        dx: Float,
-        dy: Float,
+        dx: Double,
+        dy: Double,
     ) {
         left += dx
         top += dy
@@ -482,8 +504,8 @@ data class KtRectF(
     }
 
     override fun offsetTo(
-        newLeft: Float,
-        newTop: Float,
+        newLeft: Double,
+        newTop: Double,
     ) {
         val width = right - left
         val height = bottom - top
@@ -504,11 +526,16 @@ data class KtRectF(
         bottom = newBottom
     }
 
-    fun toImmutable() = KtImmutableRectF(left, top, right, bottom)
+    fun toImmutable() = KtImmutableRectD(left, top, right, bottom)
 
-    fun toFloatArray(): FloatArray = floatArrayOf(left, top, right, bottom)
+    /** Narrow to a Float rect — for a render/layout boundary only (the central model stays double). */
+    fun toFloat() = KtImmutableRectF(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+
+    fun toDoubleArray(): DoubleArray = doubleArrayOf(left, top, right, bottom)
+
+    fun toFloatArray(): FloatArray = floatArrayOf(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
 
     companion object {
-        val EMPTY = KtImmutableRectF(0f, 0f, 0f, 0f)
+        val EMPTY = KtImmutableRectD(0.0, 0.0, 0.0, 0.0)
     }
 }
